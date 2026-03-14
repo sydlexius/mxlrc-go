@@ -63,13 +63,24 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		errBody, _ := io.ReadAll(io.LimitReader(res.Body, 8<<10))
-		return song, fmt.Errorf("musixmatch API error: status %d, body: %s", res.StatusCode, strings.TrimSpace(string(errBody)))
+		switch res.StatusCode {
+		case http.StatusUnauthorized:
+			return song, errors.New("too many requests: increase the cooldown time and try again in a few minutes")
+		case http.StatusNotFound:
+			return song, errors.New("no results found")
+		default:
+			errBody, _ := io.ReadAll(io.LimitReader(res.Body, 8<<10))
+			return song, fmt.Errorf("musixmatch API error: status %d, body: %s", res.StatusCode, strings.TrimSpace(string(errBody)))
+		}
 	}
 
-	body, err := io.ReadAll(io.LimitReader(res.Body, 2<<20))
+	const maxResponseSize = 2 << 20 // 2 MiB
+	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseSize+1))
 	if err != nil {
 		return song, err
+	}
+	if len(body) > maxResponseSize {
+		return song, fmt.Errorf("musixmatch API response too large (%d bytes)", len(body))
 	}
 
 	var p fastjson.Parser
