@@ -78,7 +78,7 @@ fi
 # --------------------------------------------------------------------------
 STAGED_GO_ANY=$(git diff --cached --name-only --diff-filter=ACM -- '*.go' 'go.mod' 'go.sum' || true)
 if [ -n "$STAGED_GO_ANY" ]; then
-    BUILD_LOG=$(mktemp)
+    BUILD_LOG=$(mktemp "${TMPDIR:-/tmp}/pre-commit-build.XXXXXX")
     if ! go build ./... 2>"$BUILD_LOG"; then
         echo -e "${RED}${BOLD}FAIL${RESET} go build:"
         head -30 "$BUILD_LOG"
