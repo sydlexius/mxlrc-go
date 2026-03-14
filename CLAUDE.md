@@ -29,11 +29,11 @@ go test -run TestFoo     # Run a single test
 ## Quality Gating
 
 **Pre-commit hook** (`.githooks/pre-commit`, install via `make hooks`):
-1. typos — spell check staged files
-2. gofmt — format check
-3. go build — compilation check
-4. golangci-lint — full linter suite
-5. govulncheck — dependency vulnerability scan
+1. typos -- spell check staged files
+2. gofmt -- format check
+3. go build -- compilation check
+4. golangci-lint -- full linter suite
+5. govulncheck -- dependency vulnerability scan
 
 **Pre-commit framework** (`.pre-commit-config.yaml`): trailing whitespace, EOF fixer, YAML check, large file guard, merge conflict detection, typos, gitleaks (secret scanning), golangci-lint, gofmt, conventional commit messages.
 
@@ -41,42 +41,42 @@ go test -run TestFoo     # Run a single test
 
 ## CI/CD Pipeline
 
-- **ci.yml** — Lint → Test → Build (multi-platform: linux/darwin/windows, amd64/arm64). Build only runs after lint+test pass.
-- **release.yml** — GoReleaser on `v*.*.*` tags. Builds cross-platform binaries and creates GitHub Releases with conventional-commit changelogs.
-- **codeql.yml** — Security scanning on push/PR/weekly schedule.
-- **dependabot.yml** — Weekly gomod + github-actions updates. Auto-approve (patch/minor) and auto-merge workflows included.
+- **ci.yml** -- Lint → Test → Build (multi-platform: linux/darwin/windows, amd64/arm64). Build only runs after lint+test pass.
+- **release.yml** -- GoReleaser on `v*.*.*` tags. Builds cross-platform binaries and creates GitHub Releases with conventional-commit changelogs.
+- **codeql.yml** -- Security scanning on push/PR/weekly schedule.
+- **dependabot.yml** -- Weekly gomod + github-actions updates. Auto-approve (patch/minor) and auto-merge workflows included.
 
 ## Architecture
 
-Single `main` package, flat file structure — no subdirectories:
+Single `main` package, flat file structure -- no subdirectories:
 
-- **main.go** — Entry point, CLI orchestration loop. Parses args via `go-arg`, iterates the `InputsQueue`, calls `Musixmatch.findLyrics()` then `writeLRC()` for each song. Handles graceful shutdown (SIGTERM) and writes a `_failed.txt` file for retries.
-- **musixmatch.go** — `Musixmatch` struct with `findLyrics(Track)` method. Calls the `apic-desktop.musixmatch.com` API, parses the nested JSON response with `fastjson`, and returns a `Song` with track metadata + lyrics/subtitles.
-- **lyrics.go** — `writeLRC()` dispatches to `writeSyncedLRC`, `writeUnsyncedLRC`, or `writeInstrumentalLRC` based on what content is available. Generates LRC tags (artist, title, album, length) and writes buffered output.
-- **utils.go** — Input parsing (`parseInput` detects mode: CLI/text-file/directory), directory scanning with `dhowden/tag` for audio metadata, `slugify` for safe filenames, and `isInArray` generic helper.
-- **structs.go** — All data types (`Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Args`, `Inputs`) and `InputsQueue` (simple FIFO queue with `next/pop/push/len/empty`).
+- **main.go** -- Entry point, CLI orchestration loop. Parses args via `go-arg`, iterates the `InputsQueue`, calls `Musixmatch.findLyrics()` then `writeLRC()` for each song. Handles graceful shutdown (SIGTERM) and writes a `_failed.txt` file for retries.
+- **musixmatch.go** -- `Musixmatch` struct with `findLyrics(Track)` method. Calls the `apic-desktop.musixmatch.com` API, parses the nested JSON response with `fastjson`, and returns a `Song` with track metadata + lyrics/subtitles.
+- **lyrics.go** -- `writeLRC()` dispatches to `writeSyncedLRC`, `writeUnsyncedLRC`, or `writeInstrumentalLRC` based on what content is available. Generates LRC tags (artist, title, album, length) and writes buffered output.
+- **utils.go** -- Input parsing (`parseInput` detects mode: CLI/text-file/directory), directory scanning with `dhowden/tag` for audio metadata, `slugify` for safe filenames, and `isInArray` generic helper.
+- **structs.go** -- All data types (`Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Args`, `Inputs`) and `InputsQueue` (simple FIFO queue with `next/pop/push/len/empty`).
 
 ## Input Modes
 
 `parseInput` in utils.go determines how to process the `Song` positional args:
 
-1. **CLI** — `artist,title` pairs passed directly (e.g., `adele,hello`)
-2. **Text file** — A `.txt` file with one `artist,title` per line
-3. **Directory** — Recursively scans for audio files (.mp3, .m4a, .flac, etc.), reads metadata via `dhowden/tag`, and fetches lyrics for each. DFS by default, BFS optional. Overrides `--outdir` to save `.lrc` alongside audio files.
+1. **CLI** -- `artist,title` pairs passed directly (e.g., `adele,hello`)
+2. **Text file** -- A `.txt` file with one `artist,title` per line
+3. **Directory** -- Recursively scans for audio files (.mp3, .m4a, .flac, etc.), reads metadata via `dhowden/tag`, and fetches lyrics for each. DFS by default, BFS optional. Overrides `--outdir` to save `.lrc` alongside audio files.
 
 ## Key Dependencies
 
-- `github.com/alexflint/go-arg` — CLI argument parsing via struct tags
-- `github.com/dhowden/tag` — Audio file metadata reading (ID3, MP4, FLAC, etc.)
-- `github.com/valyala/fastjson` — Fast JSON parsing for Musixmatch API responses
-- `golang.org/x/text` — Unicode normalization (NFKC) in `slugify`
+- `github.com/alexflint/go-arg` -- CLI argument parsing via struct tags
+- `github.com/dhowden/tag` -- Audio file metadata reading (ID3, MP4, FLAC, etc.)
+- `github.com/valyala/fastjson` -- Fast JSON parsing for Musixmatch API responses
+- `golang.org/x/text` -- Unicode normalization (NFKC) in `slugify`
 
 ## Style and Conventions
 
 - **No emoji** in code, commits, comments, or documentation
 - **No em-dashes** in any output
 - Use conventional commits: `feat:`, `fix:`, `docs:`, `ci:`, `chore:`, etc.
-- Run `make lint` before pushing -- the pre-commit hook and CI enforce the same checks.
+- Run `make lint` before pushing -- the pre-commit hook catches common issues locally before CI runs the full suite.
 - Releases are cut by tagging: `git tag v1.0.0 && git push --tags`
 
 ## Database

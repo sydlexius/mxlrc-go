@@ -22,5 +22,8 @@ dist/
 # Failed lyrics fetch logs
 *_failed.txt
 
+# Superpowers plans (local-only)
+docs/superpowers/
+
 # Serena MCP
 .serena/

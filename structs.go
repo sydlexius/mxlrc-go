@@ -48,7 +48,7 @@ type Args struct {
 	Cooldown int      `arg:"-c,--cooldown" help:"cooldown time in seconds" default:"15"`
 	Depth    int      `arg:"-d,--depth" help:"(directory mode) maximum recursion depth" default:"100"`
 	Update   bool     `arg:"-u,--update" help:"(directory mode) update existing lyrics file"`
-	BFS      bool     `arg:"--bfs" help:"(directory mode) use breatdth-first-search traversal"`
+	BFS      bool     `arg:"--bfs" help:"(directory mode) use breadth-first-search traversal"`
 	Token    string   `arg:"-t,--token" help:"musixmatch token" default:""`
 }
 

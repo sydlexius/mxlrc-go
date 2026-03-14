@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# pre-commit hook: mirrors the CI lint job so issues are caught before push.
+# pre-commit hook: catches common issues locally before push.
 #
 # Checks (in order, fast-fail):
 #   1. typos -- spell check staged files (uses .typos.toml config)
@@ -78,11 +78,14 @@ fi
 # --------------------------------------------------------------------------
 STAGED_GO_ANY=$(git diff --cached --name-only --diff-filter=ACM -- '*.go' 'go.mod' 'go.sum' || true)
 if [ -n "$STAGED_GO_ANY" ]; then
-    if ! go build ./... 2>/tmp/pre-commit-build.log; then
+    BUILD_LOG=$(mktemp)
+    if ! go build ./... 2>"$BUILD_LOG"; then
         echo -e "${RED}${BOLD}FAIL${RESET} go build:"
-        cat /tmp/pre-commit-build.log | head -30
+        head -30 "$BUILD_LOG"
+        rm -f "$BUILD_LOG"
         exit 1
     fi
+    rm -f "$BUILD_LOG"
     pass "go build"
 else
     warn "go build (no staged .go / go.mod / go.sum files)"

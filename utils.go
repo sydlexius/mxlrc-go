@@ -54,6 +54,9 @@ func getSongText(text_fn string, save_path string, songs *InputsQueue) {
 		song_list = append(song_list, scanner.Text())
 	}
 	_ = f.Close()
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
 	getSongMulti(song_list, save_path, songs)
 }
 

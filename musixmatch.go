@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/valyala/fastjson"
 )
@@ -43,7 +44,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 
 	// log.Println(baseURL.String())
 
-	client := http.Client{}
+	client := http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(context.Background(), "GET", baseURL.String(), nil)
 	if err != nil {
 		return song, err

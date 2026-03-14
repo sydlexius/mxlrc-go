@@ -27,9 +27,9 @@ lint:
 ## fmt: Format all Go files
 fmt:
 	gofmt -w .
-	goimports -w .
+	@command -v goimports >/dev/null 2>&1 && goimports -w . || true
 
-## hooks: Install git pre-commit hook (mirrors CI lint checks)
+## hooks: Install git pre-commit hook
 hooks:
 	cp .githooks/pre-commit .git/hooks/pre-commit
 	chmod +x .git/hooks/pre-commit
