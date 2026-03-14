@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/valyala/fastjson"
@@ -61,7 +62,12 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	body, err := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		errBody, _ := io.ReadAll(io.LimitReader(res.Body, 8<<10))
+		return song, fmt.Errorf("musixmatch API error: status %d, body: %s", res.StatusCode, strings.TrimSpace(string(errBody)))
+	}
+
+	body, err := io.ReadAll(io.LimitReader(res.Body, 2<<20))
 	if err != nil {
 		return song, err
 	}
@@ -86,7 +92,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 			return song, err
 		}
 	case 401:
-		return song, errors.New("too many request. increase the cooldown time and try again in a few minutes")
+		return song, errors.New("too many requests: increase the cooldown time and try again in a few minutes")
 	case 404:
 		return song, errors.New("no results found")
 	default:
