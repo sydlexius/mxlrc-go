@@ -1,0 +1,70 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go:*)",
+      "Bash(gofmt:*)",
+      "Bash(golangci-lint:*)",
+      "Bash(make:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(jq:*)",
+      "Bash(pre-commit:*)",
+      "Bash(typos:*)",
+      "Bash(bash:*)",
+      "Bash(~/.claude/scripts/:*)",
+      "Skill(prep-pr)",
+      "Skill(handle-review)",
+      "Skill(post-merge-cleanup)",
+      "Skill(new-issue)",
+      "Skill(review-stack)",
+      "Skill(push-release)",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit-push-pr)",
+      "Skill(pr-review-toolkit:review-pr)",
+      "Skill(claude-md-management:revise-claude-md)",
+      "Skill(update-config)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(echo \"$TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$file\" ]; then if echo \"$file\" | grep -qE '\\.env|credentials|secret'; then echo \"BLOCKED: $file may contain secrets. Edit manually.\" >&2; exit 2; fi; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(echo \"$TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$file\" ] && echo \"$file\" | grep -qE '\\.env|credentials|secret'; then echo \"BLOCKED: $file may contain secrets. Edit manually.\" >&2; exit 2; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(echo \"$TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$file\" ] && [ -f \"$file\" ]; then case \"$file\" in *.go) gofmt -w \"$file\" 2>/dev/null && echo \"gofmt: $file\" ;; esac; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$TOOL_INPUT\" | grep -q 'gh pr merge'; then echo 'PR merged. Run /post-merge-cleanup to update main, clean worktrees, and delete branches.'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
