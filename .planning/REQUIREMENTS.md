@@ -9,15 +9,15 @@ Requirements for M0. Each maps to roadmap phases.
 
 ### Module Identity
 
-- [ ] **MOD-01**: Go module path renamed to `github.com/sydlexius/mxlrcsvc-go` in go.mod
+- [x] **MOD-01**: Go module path renamed to `github.com/sydlexius/mxlrcsvc-go` in go.mod
 - [ ] **MOD-02**: All import paths updated to reflect new module path
 
 ### Project Layout
 
 - [ ] **LAYOUT-01**: Entry point lives at `cmd/mxlrcsvc-go/main.go` as a thin wrapper (parse args, construct deps, call App.Run)
-- [ ] **LAYOUT-02**: Internal packages created: `internal/models`, `internal/musixmatch`, `internal/lyrics`, `internal/scanner`, `internal/app`
-- [ ] **LAYOUT-03**: All types and methods exported from internal packages (uppercase names)
-- [ ] **LAYOUT-04**: Constructor functions (`NewClient`, `NewWriter`, etc.) for each internal package
+- [x] **LAYOUT-02**: Internal packages created: `internal/models`, `internal/musixmatch`, `internal/lyrics`, `internal/scanner`, `internal/app`
+- [x] **LAYOUT-03**: All types and methods exported from internal packages (uppercase names)
+- [x] **LAYOUT-04**: Constructor functions (`NewClient`, `NewWriter`, etc.) for each internal package
 - [ ] **LAYOUT-05**: Regex in slugify compiled once at package level instead of per-call
 - [ ] **LAYOUT-06**: `isInArray` replaced with `slices.Contains` from stdlib (removes reflect dependency)
 
@@ -98,12 +98,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MOD-01 | Phase 1 | Pending |
+| MOD-01 | Phase 1 | Complete |
 | MOD-02 | Phase 1 | Pending |
 | LAYOUT-01 | Phase 3 | Pending |
-| LAYOUT-02 | Phase 1 | Pending |
-| LAYOUT-03 | Phase 1 | Pending |
-| LAYOUT-04 | Phase 1 | Pending |
+| LAYOUT-02 | Phase 1 | Complete |
+| LAYOUT-03 | Phase 1 | Complete |
+| LAYOUT-04 | Phase 1 | Complete |
 | LAYOUT-05 | Phase 1 | Pending |
 | LAYOUT-06 | Phase 1 | Pending |
 | STATE-01 | Phase 2 | Pending |

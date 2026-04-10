@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Foundation: module rename + internal/models + internal/app
+- [x] 01-01-PLAN.md — Foundation: module rename + internal/models + internal/app
 - [ ] 01-02-PLAN.md — Domain packages: internal/musixmatch + internal/lyrics + internal/scanner
 - [ ] 01-03-PLAN.md — Wire main.go to internal packages, delete old files, migrate tests
 
