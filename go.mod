@@ -1,4 +1,4 @@
-module github.com/fashni/mxlrc-go
+module github.com/sydlexius/mxlrcsvc-go
 
 go 1.22
 
