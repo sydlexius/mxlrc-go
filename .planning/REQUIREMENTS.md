@@ -23,9 +23,9 @@ Requirements for M0. Each maps to roadmap phases.
 
 ### State Management
 
-- [ ] **STATE-01**: Global `inputs` and `failed` package-level variables eliminated
-- [ ] **STATE-02**: App struct owns input queue, failed queue, and processing loop orchestration
-- [ ] **STATE-03**: Signal handler uses context.Context cancellation instead of direct goroutine queue access
+- [x] **STATE-01**: Global `inputs` and `failed` package-level variables eliminated
+- [x] **STATE-02**: App struct owns input queue, failed queue, and processing loop orchestration
+- [x] **STATE-03**: Signal handler uses context.Context cancellation instead of direct goroutine queue access
 
 ### API & Config
 
@@ -106,9 +106,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LAYOUT-04 | Phase 1 | Complete |
 | LAYOUT-05 | Phase 1 | Complete |
 | LAYOUT-06 | Phase 1 | Complete |
-| STATE-01 | Phase 2 | Pending |
-| STATE-02 | Phase 2 | Pending |
-| STATE-03 | Phase 2 | Pending |
+| STATE-01 | Phase 2 | Complete |
+| STATE-02 | Phase 2 | Complete |
+| STATE-03 | Phase 2 | Complete |
 | API-01 | Phase 1 | Complete |
 | API-02 | Phase 3 | Pending |
 | API-03 | Phase 3 | Pending |

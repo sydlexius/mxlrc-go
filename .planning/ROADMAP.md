@@ -47,7 +47,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md — Create App struct with Run(ctx), move processing loop + timer + failed handling into internal/app, rewrite main.go as thin entry point with signal.NotifyContext
+- [x] 02-01-PLAN.md — Create App struct with Run(ctx), move processing loop + timer + failed handling into internal/app, rewrite main.go as thin entry point with signal.NotifyContext
 
 ### Phase 3: Entry Point & Token
 **Goal**: A thin entry point at `cmd/mxlrcsvc-go/main.go` constructs dependencies and runs the app, with the API token loaded from the correct precedence chain
