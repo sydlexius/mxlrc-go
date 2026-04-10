@@ -10,7 +10,7 @@ Requirements for M0. Each maps to roadmap phases.
 ### Module Identity
 
 - [x] **MOD-01**: Go module path renamed to `github.com/sydlexius/mxlrcsvc-go` in go.mod
-- [ ] **MOD-02**: All import paths updated to reflect new module path
+- [x] **MOD-02**: All import paths updated to reflect new module path
 
 ### Project Layout
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | MOD-01 | Phase 1 | Complete |
-| MOD-02 | Phase 1 | Pending |
+| MOD-02 | Phase 1 | Complete |
 | LAYOUT-01 | Phase 3 | Pending |
 | LAYOUT-02 | Phase 1 | Complete |
 | LAYOUT-03 | Phase 1 | Complete |
