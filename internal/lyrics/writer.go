@@ -92,6 +92,17 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 		return fmt.Errorf("closing %s: %w", tmpPath, err)
 	}
 	tmpClosed = true
+	// Restore typical output file permissions (0666, subject to umask).
+	// os.CreateTemp creates files with mode 0600; chmod before rename so the
+	// final .lrc has the same permissions as a file created with os.Create.
+	if err := os.Chmod(tmpPath, 0o666); err != nil { //nolint:gosec // mode is a fixed constant, not user input
+		return fmt.Errorf("chmod %s: %w", tmpPath, err)
+	}
+	// On Windows, os.Rename fails when the destination already exists.
+	// Remove it first so overwrite semantics are preserved cross-platform.
+	if err := os.Remove(fp); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing existing %s: %w", fp, err)
+	}
 	if err := os.Rename(tmpPath, fp); err != nil {
 		return fmt.Errorf("renaming %s to %s: %w", tmpPath, fp, err)
 	}
