@@ -101,7 +101,7 @@ Output: Milestone archived (roadmap + requirements), PROJECT.md evolved, git tag
 
 7. **Commit and tag:**
 
-   - Stage: MILESTONES.md, PROJECT.md, ROADMAP.md, STATE.md, archive files
+   - Stage: .planning/PROJECT.md, .planning/ROADMAP.md, .planning/STATE.md, .planning/milestones/v{{version}}-ROADMAP.md, .planning/milestones/v{{version}}-REQUIREMENTS.md, archive files
    - Commit: `chore: archive v{{version}} milestone`
    - Tag: `git tag -a v{{version}} -m "[milestone summary]"`
    - Ask about pushing tag

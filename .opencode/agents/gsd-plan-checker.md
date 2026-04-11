@@ -377,7 +377,7 @@ Skip if: `workflow.nyquist_validation` is explicitly set to `false` in config.js
 Before running checks 8a-8d, verify VALIDATION.md exists:
 
 ```bash
-ls "${PHASE_DIR}"/*-VALIDATION.md 2>/dev/null
+ls "${phase_dir}"/*-VALIDATION.md 2>/dev/null
 ```
 
 **If missing:** **BLOCKING FAIL** — "VALIDATION.md not found for phase {N}. Re-run `/gsd-plan-phase {N} --research` to regenerate."
@@ -559,7 +559,7 @@ ls "$phase_dir"/*-BRIEF.md 2>/dev/null
 Use gsd-tools to validate plan structure:
 
 ```bash
-for plan in "$PHASE_DIR"/*-PLAN.md; do
+for plan in "$phase_dir"/*-PLAN.md; do
   echo "=== $plan ==="
   PLAN_STRUCTURE=$(node ".opencode/get-shit-done/bin/gsd-tools.cjs" verify plan-structure "$plan")
   echo "$PLAN_STRUCTURE"
@@ -637,13 +637,13 @@ The `tasks` array in the result shows each task's completeness:
 
 **For manual validation of specificity** (gsd-tools checks structure, not content quality):
 ```bash
-grep -B5 "</task>" "$PHASE_DIR"/*-PLAN.md | grep -v "<verify>"
+grep -B5 "</task>" "$phase_dir"/*-PLAN.md | grep -v "<verify>"
 ```
 
 ## Step 6: Verify Dependency Graph
 
 ```bash
-for plan in "$PHASE_DIR"/*-PLAN.md; do
+for plan in "$phase_dir"/*-PLAN.md; do
   grep "depends_on:" "$plan"
 done
 ```
@@ -663,8 +663,8 @@ Missing: No mention of fetch/API call → Issue: Key link not planned
 ## Step 8: Assess Scope
 
 ```bash
-grep -c "<task" "$PHASE_DIR"/$PHASE-01-PLAN.md
-grep "files_modified:" "$PHASE_DIR"/$PHASE-01-PLAN.md
+grep -c "<task" "$phase_dir"/$phase_number-01-PLAN.md
+grep "files_modified:" "$phase_dir"/$phase_number-01-PLAN.md
 ```
 
 Thresholds: 2-3 tasks/plan good, 4 warning, 5+ blocker (split required).

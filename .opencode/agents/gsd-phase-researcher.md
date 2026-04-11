@@ -646,7 +646,9 @@ Write to: `$PHASE_DIR/$PADDED_PHASE-RESEARCH.md`
 
 ⚠️ `commit_docs` controls git only, NOT file writing. Always write first.
 
-## Step 7: Commit Research (optional)
+## Step 7: Commit Research (if commit_docs is true)
+
+If `commit_docs` is false, skip this step.
 
 ```bash
 node ".opencode/get-shit-done/bin/gsd-tools.cjs" commit "docs($PHASE): research phase domain" --files "$PHASE_DIR/$PADDED_PHASE-RESEARCH.md"
@@ -721,7 +723,7 @@ Research is complete when:
 - [ ] Source hierarchy followed (Context7 → Official → WebSearch)
 - [ ] All findings have confidence levels
 - [ ] RESEARCH.md created in correct format
-- [ ] RESEARCH.md committed to git
+- [ ] RESEARCH.md committed to git (only if commit_docs is true)
 - [ ] Structured return provided to orchestrator
 
 Quality indicators:

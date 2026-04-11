@@ -1128,6 +1128,7 @@ Include all frontmatter fields.
 Validate each created PLAN.md using gsd-tools:
 
 ```bash
+PLAN_PATH=$(ls "$phase_dir"/$phase_number-*-PLAN.md 2>/dev/null | head -1)
 VALID=$(node ".opencode/get-shit-done/bin/gsd-tools.cjs" frontmatter validate "$PLAN_PATH" --schema plan)
 ```
 

@@ -658,7 +658,7 @@ Roadmap is complete when:
 - [ ] REQUIREMENTS.md traceability update prepared
 - [ ] Draft presented for user approval
 - [ ] User feedback incorporated (if any)
-- [ ] Files written (after approval)
+- [ ] Files written (immediately after draft is finalized, before return)
 - [ ] Structured return provided to orchestrator
 
 Quality indicators:

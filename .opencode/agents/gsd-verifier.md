@@ -185,7 +185,7 @@ Before marking any must-have as FAILED, check the VERIFICATION.md frontmatter fo
 
 **Suggesting overrides:** When a must-have FAILs but evidence shows an alternative implementation that achieves the same intent, include an override suggestion in the report:
 
-```markdown
+````markdown
 **This looks intentional.** To accept this deviation, add to VERIFICATION.md frontmatter:
 
 ```yaml
@@ -195,7 +195,7 @@ overrides:
     accepted_by: "{name}"
     accepted_at: "{ISO timestamp}"
 ```
-```
+````
 
 ## Step 4: Verify Artifacts (Three Levels)
 

@@ -71,8 +71,8 @@ Before editing ANY file for a finding, establish safe rollback capability.
 3. **Verify fix:** Apply 3-tier verification strategy (see verification_strategy).
 
 4. **On verification failure:**
-   - Run `git checkout -- {file}` for EACH file in `touched_files`.
-   - This is safe: the fix has NOT been committed yet (commit happens only after verification passes). `git checkout --` reverts only the uncommitted in-progress change for that file and does not affect commits from prior findings.
+   - Run `git restore --source=HEAD --staged --worktree -- {file}` for EACH file in `touched_files`.
+   - This is safe: the fix has NOT been committed yet (commit happens only after verification passes). `git restore --staged --worktree` resets both the index and working tree to HEAD for that file and does not affect commits from prior findings.
    - **DO NOT use Write tool for rollback** — a partial write on tool failure leaves the file corrupted with no recovery path.
 
 5. **After rollback:**
@@ -81,7 +81,7 @@ Before editing ANY file for a finding, establish safe rollback capability.
    - Document failure details in skip reason.
    - Continue with next finding.
 
-**Rollback scope:** Per-finding only. Files modified by prior (already committed) findings are NOT touched during rollback — `git checkout --` only reverts uncommitted changes.
+**Rollback scope:** Per-finding only. Files modified by prior (already committed) findings are NOT touched during rollback — `git restore --source=HEAD --staged --worktree` only reverts uncommitted changes.
 
 **Key constraint:** Each finding is independent. Rollback for finding N does NOT affect commits from findings 1 through N-1.
 
@@ -105,13 +105,13 @@ Run syntax/parse check appropriate to file type:
 | Language | Check Command |
 |----------|--------------|
 | JavaScript | `node -c {file}` (syntax check) |
-| TypeScript | `npx tsc --noEmit {file}` (if tsconfig.json exists in project) |
+| TypeScript | `npx tsc --noEmit -p tsconfig.json` (if tsconfig.json exists in project) |
 | Python | `python -c "import ast; ast.parse(open('{file}').read())"` |
 | JSON | `node -e "JSON.parse(require('fs').readFileSync('{file}','utf-8'))"` |
 | Other | Skip to Tier 1 only |
 
 **Scoping syntax checks:**
-- TypeScript: If `npx tsc --noEmit {file}` reports errors in OTHER files (not the file you just edited), those are pre-existing project errors — **IGNORE them**. Only fail if errors reference the specific file you modified.
+- TypeScript: If `npx tsc --noEmit -p tsconfig.json` reports errors in OTHER files (not the file you just edited), those are pre-existing project errors — **IGNORE them**. Only fail if errors reference the specific file you modified.
 - JavaScript: `node -c {file}` is reliable for plain .js but NOT for JSX, TypeScript, or ESM with bare specifiers. If `node -c` fails on a file type it doesn't support, fall back to Tier 1 (re-read only) — do NOT rollback.
 - General rule: If a syntax check produces errors that existed BEFORE your edit (compare with pre-fix state), the fix did not introduce them. Proceed to commit.
 
@@ -269,7 +269,7 @@ For each finding in sorted order:
 **b. Record files to touch (for rollback):**
 - For EVERY file about to be modified:
   - Record file path in `touched_files` list for this finding
-  - No pre-capture needed — rollback uses `git checkout -- {file}` which is atomic
+  - No pre-capture needed — rollback uses `git restore --source=HEAD --staged --worktree -- {file}` which is atomic
 
 **c. Determine if fix applies:**
 - Compare current code state to what reviewer described
@@ -437,7 +437,7 @@ _Iteration: {N}_
 
 **DO read the actual source file** before applying any fix — never blindly apply REVIEW.md suggestions without understanding current code state.
 
-**DO record which files will be touched** before every fix attempt — this is your rollback list. Rollback is `git checkout -- {file}`, not content capture.
+**DO record which files will be touched** before every fix attempt — this is your rollback list. Rollback is `git restore --source=HEAD --staged --worktree -- {file}`, not content capture.
 
 **DO commit each fix atomically** — one commit per finding, listing ALL modified files in `--files` argument.
 
@@ -450,7 +450,7 @@ _Iteration: {N}_
 
 **DO skip findings that cannot be applied cleanly** — do not force broken fixes. Mark as skipped with clear reason.
 
-**DO rollback using `git checkout -- {file}`** — atomic and safe since the fix has not been committed yet. Do NOT use Write tool for rollback (partial write on tool failure corrupts the file).
+**DO rollback using `git restore --source=HEAD --staged --worktree -- {file}`** — atomic and safe since the fix has not been committed yet. Do NOT use Write tool for rollback (partial write on tool failure corrupts the file).
 
 **DO NOT modify files unrelated to the finding** — scope each fix narrowly to the issue at hand.
 
@@ -503,10 +503,10 @@ Fixes are committed **per-finding**. This has operational implications:
 - [ ] Each fix committed atomically with `fix({padded_phase}): {id} {description}` format
 - [ ] All modified files listed in each commit's `--files` argument (multi-file fix support)
 - [ ] REVIEW-FIX.md created with accurate counts, status, and iteration number
-- [ ] No source files left in broken state (failed fixes rolled back via git checkout)
+- [ ] No source files left in broken state (failed fixes rolled back via git restore)
 - [ ] No partial or uncommitted changes remain after execution
 - [ ] Verification performed for each fix (minimum: re-read, preferred: syntax check)
-- [ ] Safe rollback used `git checkout -- {file}` (atomic, not Write tool)
+- [ ] Safe rollback used `git restore --source=HEAD --staged --worktree -- {file}` (atomic, not Write tool)
 - [ ] Skipped findings documented with specific skip reasons
 - [ ] Project conventions from AGENTS.md respected during fixes
 
