@@ -73,7 +73,12 @@ Plans:
   3. All three input modes (CLI pairs, text file, directory scan) produce identical output to the pre-restructuring baseline
   4. `go.mod` shows Go 1.24 minimum and all dependencies are at target versions (go-arg v1.6.1, fastjson v1.6.10, x/text latest, dhowden/tag latest)
   5. README documents the new module path, binary name, and token configuration
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Tooling config: update Makefile + GoReleaser + CI for new binary name and build path
+- [ ] 04-02-PLAN.md — Dependencies: bump Go to 1.24, upgrade go-arg/fastjson/x/text/dhowden/tag
+- [ ] 04-03-PLAN.md — README update + smoke test checkpoint for all input modes
 
 ## Progress
 
