@@ -144,6 +144,134 @@ func TestWriteLRC_UnsyncedExplicitFilename(t *testing.T) {
 	}
 }
 
+// TestWriteLRC_StaleSidecarCleanup verifies that WriteLRC removes the opposite
+// sidecar file after a successful write so format transitions never leave both
+// files on disk.
+func TestWriteLRC_StaleSidecarCleanup(t *testing.T) {
+	syncedSong := models.Song{
+		Track: models.Track{ArtistName: "Artist", TrackName: "Track"},
+		Subtitles: models.Synced{Lines: []models.Lines{
+			{Text: "Line", Time: models.Time{Minutes: 0, Seconds: 1, Hundredths: 0}},
+		}},
+	}
+	unsyncedSong := models.Song{
+		Track:  models.Track{ArtistName: "Artist", TrackName: "Track"},
+		Lyrics: models.Lyrics{LyricsBody: "Plain lyrics"},
+	}
+
+	t.Run("writes_lrc_removes_stale_txt", func(t *testing.T) {
+		dir := t.TempDir()
+		// Pre-create a stale .txt for the same stem.
+		staleTxt := filepath.Join(dir, "song.txt")
+		if err := os.WriteFile(staleTxt, []byte("old unsynced"), 0o644); err != nil {
+			t.Fatalf("creating stale .txt: %v", err)
+		}
+
+		w := NewLRCWriter()
+		if err := w.WriteLRC(syncedSong, "song.lrc", dir); err != nil {
+			t.Fatalf("WriteLRC: %v", err)
+		}
+
+		if _, err := os.Stat(staleTxt); !os.IsNotExist(err) {
+			t.Errorf("expected stale .txt to be removed, but it still exists (err=%v)", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "song.lrc")); err != nil {
+			t.Errorf("expected .lrc to exist: %v", err)
+		}
+	})
+
+	t.Run("writes_lrc_no_stale_txt_is_ok", func(t *testing.T) {
+		dir := t.TempDir()
+		w := NewLRCWriter()
+		// No pre-existing .txt -- must not error.
+		if err := w.WriteLRC(syncedSong, "song.lrc", dir); err != nil {
+			t.Fatalf("WriteLRC without stale .txt: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "song.lrc")); err != nil {
+			t.Errorf("expected .lrc to exist: %v", err)
+		}
+	})
+
+	t.Run("writes_txt_removes_stale_lrc", func(t *testing.T) {
+		dir := t.TempDir()
+		// Pre-create a stale .lrc for the same stem.
+		staleLrc := filepath.Join(dir, "song.lrc")
+		if err := os.WriteFile(staleLrc, []byte("[00:01.00]Old line\n"), 0o644); err != nil {
+			t.Fatalf("creating stale .lrc: %v", err)
+		}
+
+		w := NewLRCWriter()
+		if err := w.WriteLRC(unsyncedSong, "song.lrc", dir); err != nil {
+			t.Fatalf("WriteLRC: %v", err)
+		}
+
+		if _, err := os.Stat(staleLrc); !os.IsNotExist(err) {
+			t.Errorf("expected stale .lrc to be removed, but it still exists (err=%v)", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "song.txt")); err != nil {
+			t.Errorf("expected .txt to exist: %v", err)
+		}
+	})
+
+	t.Run("writes_txt_no_stale_lrc_is_ok", func(t *testing.T) {
+		dir := t.TempDir()
+		w := NewLRCWriter()
+		// No pre-existing .lrc -- must not error.
+		if err := w.WriteLRC(unsyncedSong, "song.lrc", dir); err != nil {
+			t.Fatalf("WriteLRC without stale .lrc: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "song.txt")); err != nil {
+			t.Errorf("expected .txt to exist: %v", err)
+		}
+	})
+
+	t.Run("writes_lrc_both_pre_exist", func(t *testing.T) {
+		dir := t.TempDir()
+		// Both files exist before an upgrade write -- only .lrc should remain.
+		if err := os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("old lrc"), 0o644); err != nil {
+			t.Fatalf("creating pre-existing .lrc: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "song.txt"), []byte("old txt"), 0o644); err != nil {
+			t.Fatalf("creating pre-existing .txt: %v", err)
+		}
+
+		w := NewLRCWriter()
+		if err := w.WriteLRC(syncedSong, "song.lrc", dir); err != nil {
+			t.Fatalf("WriteLRC: %v", err)
+		}
+
+		if _, err := os.Stat(filepath.Join(dir, "song.lrc")); err != nil {
+			t.Errorf("expected .lrc to exist: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "song.txt")); !os.IsNotExist(err) {
+			t.Errorf("expected .txt to be removed, but it still exists (err=%v)", err)
+		}
+	})
+
+	t.Run("writes_txt_both_pre_exist", func(t *testing.T) {
+		dir := t.TempDir()
+		// Both files exist before a downgrade write -- only .txt should remain.
+		if err := os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("old lrc"), 0o644); err != nil {
+			t.Fatalf("creating pre-existing .lrc: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "song.txt"), []byte("old txt"), 0o644); err != nil {
+			t.Fatalf("creating pre-existing .txt: %v", err)
+		}
+
+		w := NewLRCWriter()
+		if err := w.WriteLRC(unsyncedSong, "song.lrc", dir); err != nil {
+			t.Fatalf("WriteLRC: %v", err)
+		}
+
+		if _, err := os.Stat(filepath.Join(dir, "song.txt")); err != nil {
+			t.Errorf("expected .txt to exist: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "song.lrc")); !os.IsNotExist(err) {
+			t.Errorf("expected .lrc to be removed, but it still exists (err=%v)", err)
+		}
+	})
+}
+
 func TestWriteLRC_Synced(t *testing.T) {
 	w := NewLRCWriter()
 	tmpDir := t.TempDir()

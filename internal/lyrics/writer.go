@@ -54,7 +54,7 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 		// content, swap the extension to .txt so the file type matches content.
 		if !writeTags {
 			fn = strings.TrimSuffix(filename, filepath.Ext(filename)) + ".txt"
-			slog.Info("upgrade attempted, synced lyrics unavailable", "path", filepath.Join(outdir, fn))
+			slog.Info("synced lyrics unavailable, saving as unsynced .txt", "path", filepath.Join(outdir, fn))
 		} else {
 			fn = filename
 		}
@@ -126,12 +126,18 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 	if err := os.Rename(tmpPath, fp); err != nil {
 		return fmt.Errorf("renaming %s to %s: %w", tmpPath, fp, err)
 	}
-	// If we just wrote a .lrc, remove any stale .txt for the same stem so the
-	// upgrade path doesn't leave both files on disk.
-	if filepath.Ext(fp) == ".lrc" {
+	// Remove the opposite sidecar so format transitions never leave both files on disk.
+	// Writing .lrc removes a stale .txt (upgrade), writing .txt removes a stale .lrc (downgrade).
+	switch filepath.Ext(fp) {
+	case ".lrc":
 		stale := strings.TrimSuffix(fp, ".lrc") + ".txt"
 		if err := os.Remove(stale); err != nil && !os.IsNotExist(err) {
-			slog.Warn("could not remove stale .txt after upgrade", "path", stale, "error", err)
+			slog.Warn("could not remove stale sidecar", "path", stale, "error", err)
+		}
+	case ".txt":
+		stale := strings.TrimSuffix(fp, ".txt") + ".lrc"
+		if err := os.Remove(stale); err != nil && !os.IsNotExist(err) {
+			slog.Warn("could not remove stale sidecar", "path", stale, "error", err)
 		}
 	}
 	slog.Info("lyrics saved", "path", fp)
