@@ -32,14 +32,14 @@ Initialize a new project through unified flow: questioning → research (optiona
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/new-project.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/questioning.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/ui-brand.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/templates/project.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/templates/requirements.md
+@.opencode/get-shit-done/workflows/new-project.md
+@.opencode/get-shit-done/references/questioning.md
+@.opencode/get-shit-done/references/ui-brand.md
+@.opencode/get-shit-done/templates/project.md
+@.opencode/get-shit-done/templates/requirements.md
 </execution_context>
 
 <process>
-Execute the new-project workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/new-project.md end-to-end.
+Execute the new-project workflow from @.opencode/get-shit-done/workflows/new-project.md end-to-end.
 Preserve all workflow gates (validation, approvals, commits, routing).
 </process>

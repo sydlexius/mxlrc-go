@@ -13,10 +13,10 @@ Use when `.planning/phases/` has accumulated directories from past milestones.
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/cleanup.md
+@.opencode/get-shit-done/workflows/cleanup.md
 </execution_context>
 
 <process>
-Follow the cleanup workflow at @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/cleanup.md.
+Follow the cleanup workflow at @.opencode/get-shit-done/workflows/cleanup.md.
 Identify completed milestones, show a dry-run summary, and archive on confirmation.
 </process>

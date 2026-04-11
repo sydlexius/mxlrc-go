@@ -18,9 +18,9 @@ Accepts an optional topic argument: `/gsd-explore authentication strategy`
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/explore.md
+@.opencode/get-shit-done/workflows/explore.md
 </execution_context>
 
 <process>
-Execute the explore workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/explore.md end-to-end.
+Execute the explore workflow from @.opencode/get-shit-done/workflows/explore.md end-to-end.
 </process>

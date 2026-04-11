@@ -19,9 +19,9 @@ Three modes:
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/undo.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/ui-brand.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/gate-prompts.md
+@.opencode/get-shit-done/workflows/undo.md
+@.opencode/get-shit-done/references/ui-brand.md
+@.opencode/get-shit-done/references/gate-prompts.md
 </execution_context>
 
 <context>
@@ -29,5 +29,5 @@ $ARGUMENTS
 </context>
 
 <process>
-Execute the undo workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/undo.md end-to-end.
+Execute the undo workflow from @.opencode/get-shit-done/workflows/undo.md end-to-end.
 </process>

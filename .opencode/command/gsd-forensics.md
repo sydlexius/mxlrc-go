@@ -18,7 +18,7 @@ Output: Forensic report saved to `.planning/forensics/`, presented inline, with 
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/forensics.md
+@.opencode/get-shit-done/workflows/forensics.md
 </execution_context>
 
 <context>
@@ -35,7 +35,7 @@ Output: Forensic report saved to `.planning/forensics/`, presented inline, with 
 </context>
 
 <process>
-Read and execute the forensics workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/forensics.md end-to-end.
+Read and execute the forensics workflow from @.opencode/get-shit-done/workflows/forensics.md end-to-end.
 </process>
 
 <success_criteria>

@@ -22,19 +22,25 @@ CMD=$(echo "$INPUT" | node -e "let d='';process.stdin.on('data',c=>d+=c);process
 
 # Only check git commit commands
 if [[ "$CMD" =~ ^git[[:space:]]+commit ]]; then
-  # Extract message from -m flag
+  # Extract message from -m or --message flag
   MSG=""
   if [[ "$CMD" =~ -m[[:space:]]+\"([^\"]+)\" ]]; then
     MSG="${BASH_REMATCH[1]}"
   elif [[ "$CMD" =~ -m[[:space:]]+\'([^\']+)\' ]]; then
+    MSG="${BASH_REMATCH[1]}"
+  elif [[ "$CMD" =~ --message[[:space:]]+\"([^\"]+)\" ]]; then
+    MSG="${BASH_REMATCH[1]}"
+  elif [[ "$CMD" =~ --message[[:space:]]+\'([^\']+)\' ]]; then
+    MSG="${BASH_REMATCH[1]}"
+  elif [[ "$CMD" =~ --message=(.+) ]]; then
     MSG="${BASH_REMATCH[1]}"
   fi
 
   if [ -n "$MSG" ]; then
     SUBJECT=$(echo "$MSG" | head -1)
     # Validate Conventional Commits format
-    if ! [[ "$SUBJECT" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(\(.+\))?:[[:space:]].+ ]]; then
-      echo '{"decision": "block", "reason": "Commit message must follow Conventional Commits: <type>(<scope>): <subject>. Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore. Subject must be <=72 chars, lowercase, imperative mood, no trailing period."}'
+    if ! [[ "$SUBJECT" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?:[[:space:]].+ ]]; then
+      echo '{"decision": "block", "reason": "Commit message must follow Conventional Commits: <type>(<scope>): <subject>. Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert. Subject must be <=72 chars, lowercase, imperative mood, no trailing period."}'
       exit 2
     fi
     if [ ${#SUBJECT} -gt 72 ]; then

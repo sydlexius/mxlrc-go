@@ -61,7 +61,7 @@ Create a new thread:
 
 1. Generate slug from description:
    ```bash
-   SLUG=$(node "/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/bin/gsd-tools.cjs" generate-slug "$ARGUMENTS" --raw)
+   SLUG=$(node ".opencode/get-shit-done/bin/gsd-tools.cjs" generate-slug "$ARGUMENTS" --raw)
    ```
 
 2. Create the threads directory if needed:
@@ -100,7 +100,7 @@ Create a new thread:
 
 5. Commit:
    ```bash
-   node "/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/bin/gsd-tools.cjs" commit "docs: create thread — ${ARGUMENTS}" --files ".planning/threads/${SLUG}.md"
+   node ".opencode/get-shit-done/bin/gsd-tools.cjs" commit "docs: create thread — ${ARGUMENTS}" --files ".planning/threads/${SLUG}.md"
    ```
 
 6. Report:

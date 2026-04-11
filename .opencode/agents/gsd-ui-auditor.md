@@ -61,16 +61,16 @@ mkdir -p .planning/ui-reviews
 
 # Write .gitignore if not present
 if [ ! -f .planning/ui-reviews/.gitignore ]; then
-  cat > .planning/ui-reviews/.gitignore << 'GITIGNORE'
-# Screenshot files — never commit binary assets
-*.png
-*.webp
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.tiff
-GITIGNORE
+  printf '%s\n' \
+    '# Screenshot files -- never commit binary assets' \
+    '*.png' \
+    '*.webp' \
+    '*.jpg' \
+    '*.jpeg' \
+    '*.gif' \
+    '*.bmp' \
+    '*.tiff' \
+    > .planning/ui-reviews/.gitignore
   echo "Created .planning/ui-reviews/.gitignore"
 fi
 ```
@@ -124,31 +124,38 @@ below. Behavior is unchanged from the standard code-only audit path.
 ## Screenshot Capture (CLI only — no MCP, no persistent browser)
 
 ```bash
-# Check for running dev server
-DEV_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || echo "000")
+# Check for running dev server (try port 3000, then 5173, then 8080)
+DEV_PORT=""
+for CANDIDATE in 3000 5173 8080; do
+  DEV_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${CANDIDATE}" 2>/dev/null || echo "000")
+  if [ "$DEV_STATUS" = "200" ]; then
+    DEV_PORT="$CANDIDATE"
+    break
+  fi
+done
 
-if [ "$DEV_STATUS" = "200" ]; then
+if [ -n "$DEV_PORT" ]; then
   SCREENSHOT_DIR=".planning/ui-reviews/${PADDED_PHASE}-$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$SCREENSHOT_DIR"
 
   # Desktop
-  npx playwright screenshot http://localhost:3000 \
+  npx playwright screenshot "http://localhost:${DEV_PORT}" \
     "$SCREENSHOT_DIR/desktop.png" \
     --viewport-size=1440,900 2>/dev/null
 
   # Mobile
-  npx playwright screenshot http://localhost:3000 \
+  npx playwright screenshot "http://localhost:${DEV_PORT}" \
     "$SCREENSHOT_DIR/mobile.png" \
     --viewport-size=375,812 2>/dev/null
 
   # Tablet
-  npx playwright screenshot http://localhost:3000 \
+  npx playwright screenshot "http://localhost:${DEV_PORT}" \
     "$SCREENSHOT_DIR/tablet.png" \
     --viewport-size=768,1024 2>/dev/null
 
-  echo "Screenshots captured to $SCREENSHOT_DIR"
+  echo "Screenshots captured from localhost:${DEV_PORT} to $SCREENSHOT_DIR"
 else
-  echo "No dev server at localhost:3000 — code-only audit"
+  echo "No dev server at localhost:3000/5173/8080 -- code-only audit"
 fi
 ```
 

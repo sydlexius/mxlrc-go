@@ -159,8 +159,8 @@ check_api_consumed() {
     --include="*.ts" --include="*.tsx" 2>/dev/null | wc -l)
 
   # Also check for dynamic routes (replace [id] with pattern)
-  local dynamic_route=$(echo "$route" | sed 's/\[.*\]/.*/g')
-  local dynamic_fetches=$(grep -r "fetch.*['\"]$dynamic_route\|axios.*['\"]$dynamic_route" "$search_path" \
+  local dynamic_route=$(printf '%s\n' "$route" | sed -E 's/\[[^]]+\]/[^/]+/g')
+  local dynamic_fetches=$(grep -rE "fetch.*['\"]$dynamic_route|axios.*['\"]$dynamic_route" "$search_path" \
     --include="*.ts" --include="*.tsx" 2>/dev/null | wc -l)
 
   local total=$((fetches + dynamic_fetches))

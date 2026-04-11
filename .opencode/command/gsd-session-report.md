@@ -10,9 +10,9 @@ Generate a structured SESSION_REPORT.md document capturing session outcomes, wor
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/session-report.md
+@.opencode/get-shit-done/workflows/session-report.md
 </execution_context>
 
 <process>
-Execute the session-report workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/session-report.md end-to-end.
+Execute the session-report workflow from @.opencode/get-shit-done/workflows/session-report.md end-to-end.
 </process>

@@ -21,7 +21,7 @@ Output: updated SECURITY.md.
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/secure-phase.md
+@.opencode/get-shit-done/workflows/secure-phase.md
 </execution_context>
 
 <context>
@@ -29,6 +29,6 @@ Phase: $ARGUMENTS — optional, defaults to last completed phase.
 </context>
 
 <process>
-Execute @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/secure-phase.md.
+Execute @.opencode/get-shit-done/workflows/secure-phase.md.
 Preserve all workflow gates.
 </process>

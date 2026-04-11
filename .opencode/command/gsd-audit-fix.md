@@ -24,9 +24,9 @@ Flags:
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/audit-fix.md
+@.opencode/get-shit-done/workflows/audit-fix.md
 </execution_context>
 
 <process>
-Execute the audit-fix workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/audit-fix.md end-to-end.
+Execute the audit-fix workflow from @.opencode/get-shit-done/workflows/audit-fix.md end-to-end.
 </process>

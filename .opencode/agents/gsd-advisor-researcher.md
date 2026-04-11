@@ -41,7 +41,7 @@ The calibration tier controls output shape. Follow the tier instructions exactly
 
 ### minimal_decisive
 - **Options:** 2 options maximum
-- **Recommendations:** Decisive single recommendation
+- **Recommendations:** Conditional recommendation with one clearly preferred option (e.g., "Rec unless X is a constraint")
 - **Rationale:** Brief (1-2 sentences)
 </calibration_tiers>
 

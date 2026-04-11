@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // gsd-hook-version: 1.34.2
-// GSD Workflow Guard — PreToolUse hook
+// GSD Workflow Guard -- PreToolUse hook
 // Detects when Claude attempts file edits outside a GSD workflow context
 // (no active /gsd- skill or Task subagent) and injects an advisory warning.
 //
-// This is a SOFT guard — it advises, not blocks. The edit still proceeds.
+// This is a SOFT guard -- it advises, not blocks. The edit still proceeds.
 // The warning nudges Claude to use /gsd-quick or /gsd-fast instead of
 // making direct edits that bypass state tracking.
 //
@@ -78,7 +78,7 @@ process.stdin.on('end', () => {
     const output = {
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
-        additionalContext: `⚠️ WORKFLOW ADVISORY: You're editing ${path.basename(filePath)} directly without a GSD command. ` +
+        additionalContext: `WARNING: You're editing ${path.basename(filePath)} directly without a GSD command. ` +
           'This edit will not be tracked in STATE.md or produce a SUMMARY.md. ' +
           'Consider using /gsd-fast for trivial fixes or /gsd-quick for larger changes ' +
           'to maintain project state tracking. ' +

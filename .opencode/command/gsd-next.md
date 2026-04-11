@@ -17,9 +17,9 @@ Supports `--force` flag to bypass safety gates (checkpoint, error state, verific
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/next.md
+@.opencode/get-shit-done/workflows/next.md
 </execution_context>
 
 <process>
-Execute the next workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/next.md end-to-end.
+Execute the next workflow from @.opencode/get-shit-done/workflows/next.md end-to-end.
 </process>

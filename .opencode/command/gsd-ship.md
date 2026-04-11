@@ -16,7 +16,7 @@ Closes the plan → execute → verify → ship loop.
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/ship.md
+@.opencode/get-shit-done/workflows/ship.md
 </execution_context>
 
-Execute the ship workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/ship.md end-to-end.
+Execute the ship workflow from @.opencode/get-shit-done/workflows/ship.md end-to-end.

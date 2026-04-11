@@ -21,9 +21,9 @@ Future: `--prd` mode for PRD extraction is planned for a follow-up PR.
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/import.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/ui-brand.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/gate-prompts.md
+@.opencode/get-shit-done/workflows/import.md
+@.opencode/get-shit-done/references/ui-brand.md
+@.opencode/get-shit-done/references/gate-prompts.md
 </execution_context>
 
 <context>

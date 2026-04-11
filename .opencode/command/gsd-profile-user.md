@@ -18,8 +18,8 @@ Routes to the profile-user workflow which orchestrates the full flow: consent ga
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/profile-user.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/ui-brand.md
+@.opencode/get-shit-done/workflows/profile-user.md
+@.opencode/get-shit-done/references/ui-brand.md
 </execution_context>
 
 <context>

@@ -33,11 +33,11 @@ Create a physical workspace directory containing copies of specified git repos (
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/new-workspace.md
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/references/ui-brand.md
+@.opencode/get-shit-done/workflows/new-workspace.md
+@.opencode/get-shit-done/references/ui-brand.md
 </execution_context>
 
 <process>
-Execute the new-workspace workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/new-workspace.md end-to-end.
+Execute the new-workspace workflow from @.opencode/get-shit-done/workflows/new-workspace.md end-to-end.
 Preserve all workflow gates (validation, approvals, commits, routing).
 </process>

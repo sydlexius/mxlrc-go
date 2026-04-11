@@ -11,7 +11,7 @@ Scan all phases for pending, skipped, blocked, and human_needed UAT items. Cross
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/audit-uat.md
+@.opencode/get-shit-done/workflows/audit-uat.md
 </execution_context>
 
 <context>

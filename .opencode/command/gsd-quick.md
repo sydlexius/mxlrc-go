@@ -33,7 +33,7 @@ Granular flags are composable: `--discuss --research --validate` gives the same 
 </objective>
 
 <execution_context>
-@/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/quick.md
+@.opencode/get-shit-done/workflows/quick.md
 </execution_context>
 
 <context>
@@ -43,6 +43,6 @@ Context files are resolved inside the workflow (`init quick`) and delegated via 
 </context>
 
 <process>
-Execute the quick workflow from @/Users/jesse/Developer/mxlrc-go/.opencode/get-shit-done/workflows/quick.md end-to-end.
+Execute the quick workflow from @.opencode/get-shit-done/workflows/quick.md end-to-end.
 Preserve all workflow gates (validation, task description, planning, execution, state updates, commits).
 </process>
