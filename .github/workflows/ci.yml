@@ -92,7 +92,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
-        run: go build -ldflags="-s -w" -o mxlrc-go .
+        run: go build -ldflags="-s -w" -o mxlrcsvc-go ./cmd/mxlrcsvc-go
 
   build:
     name: Build
