@@ -46,20 +46,33 @@ func (a *App) Run(ctx context.Context) error {
 			break
 		}
 
-		cur := a.inputs.Next()
+		cur, err := a.inputs.Next()
+		if err != nil {
+			slog.Error("unexpected empty queue", "error", err)
+			break
+		}
 		slog.Info("searching song", "artist", cur.Track.ArtistName, "track", cur.Track.TrackName)
-		song, err := a.fetcher.FindLyrics(cur.Track)
+		song, err := a.fetcher.FindLyrics(ctx, cur.Track)
 		if err == nil {
 			slog.Info("formatting lyrics")
 			writeErr := a.writer.WriteLRC(song, cur.Filename, cur.Outdir)
-			cur = a.inputs.Pop()
+			cur, err = a.inputs.Pop()
+			if err != nil {
+				slog.Error("unexpected empty queue on pop", "error", err)
+				break
+			}
 			if writeErr != nil {
 				slog.Error("failed to save lyrics", "error", writeErr)
 				a.failed.Push(cur)
 			}
 		} else {
 			slog.Error("lyrics fetch failed", "error", err)
-			a.failed.Push(a.inputs.Pop())
+			popped, popErr := a.inputs.Pop()
+			if popErr != nil {
+				slog.Error("unexpected empty queue on pop", "error", popErr)
+				break
+			}
+			a.failed.Push(popped)
 		}
 		a.timer(ctx)
 	}
@@ -118,8 +131,12 @@ func (a *App) handleFailed() error {
 
 	buffer := bufio.NewWriter(f)
 	for !a.failed.Empty() {
-		cur := a.failed.Pop()
-		_, err := buffer.WriteString(cur.Track.ArtistName + "," + cur.Track.TrackName + "\n")
+		cur, err := a.failed.Pop()
+		if err != nil {
+			_ = f.Close()
+			return fmt.Errorf("unexpected empty queue writing failed items: %w", err)
+		}
+		_, err = buffer.WriteString(cur.Track.ArtistName + "," + cur.Track.TrackName + "\n")
 		if err != nil {
 			_ = f.Close()
 			return fmt.Errorf("writing failed item: %w", err)

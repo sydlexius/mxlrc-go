@@ -24,22 +24,28 @@ go test -v -race -count=1 ./...  # Exact CI command
 ## Test File Organization
 
 **Location:**
-- Co-located with source files in the project root (same `package main`)
-- Test file sits alongside the file it tests
+- Co-located with source files inside each `internal/` package
+- Test file sits alongside the file it tests, in the same package
 
 **Naming:**
 - Standard Go convention: `{source}_test.go`
-- Currently only `utils_test.go` exists (tests for `utils.go`)
+- Currently only `internal/lyrics/slugify_test.go` exists (tests for `Slugify()`)
 
 **Structure:**
 ```
-/
-├── utils.go           # Source
-├── utils_test.go      # Tests
-├── main.go            # No test file
-├── lyrics.go          # No test file
-├── musixmatch.go      # No test file
-└── structs.go         # No test file
+internal/
+├── lyrics/
+│   ├── slugify.go         # Source
+│   └── slugify_test.go    # Tests
+├── app/
+│   ├── app.go             # No test file yet
+│   └── queue.go           # No test file yet
+├── musixmatch/
+│   └── client.go          # No test file yet
+├── scanner/
+│   └── scanner.go         # No test file yet
+└── models/
+    └── models.go          # No test file (pure data)
 ```
 
 ## Test Structure
@@ -85,22 +91,16 @@ func TestSlugify(t *testing.T) {
 
 ## Mocking
 
-**Framework:** None
-
-**Patterns:**
-- No mocking infrastructure exists
-- No interfaces defined for dependency injection
-- The `Musixmatch` struct makes real HTTP calls with no abstraction layer
-- File I/O operations use `os` directly with no wrapping
-
-**What would need mocking for new tests:**
-- HTTP client in `musixmatch.go` -- extract `http.Client` as interface or use `httptest.Server`
-- File system operations in `lyrics.go` and `utils.go` -- use `os.MkdirTemp()` or `testing/fstest`
-- The `tag.ReadFrom()` call in `getSongDir()` -- needs audio file fixtures or interface extraction
+**Mocking:**
+- `musixmatch.Fetcher` interface enables test doubles for the API client — pass a mock `Fetcher` to `NewApp()`
+- `lyrics.Writer` interface enables test doubles for file output — pass a mock `Writer` to `NewApp()`
+- HTTP client in `internal/musixmatch/client.go` — use `httptest.Server` for integration tests
+- File system operations in `internal/lyrics/writer.go` and `internal/scanner/scanner.go` — use `t.TempDir()`
+- The `tag.ReadFrom()` call in `GetSongDir()` — needs audio file fixtures or interface extraction
 
 **What NOT to mock:**
-- Pure functions like `slugify()`, `assertInput()`, `isInArray()` -- test directly
-- `InputsQueue` methods -- test the real implementation
+- Pure functions like `Slugify()`, `AssertInput()` — test directly
+- `InputsQueue` methods — test the real implementation
 
 ## Fixtures and Factories
 
@@ -126,7 +126,7 @@ tests := []struct {
 
 **Requirements:** None enforced (no minimum coverage threshold)
 
-**Current State:** Only `slugify()` in `utils.go` has test coverage. All other functions and files are untested.
+**Current State:** Only `Slugify()` in `internal/lyrics/slugify.go` has test coverage. All other functions and packages are untested.
 
 **View Coverage:**
 ```bash
@@ -157,7 +157,7 @@ go tool cover -func=coverage.out             # Per-function coverage summary
 ## CI Test Execution
 
 **Pipeline:** `.github/workflows/ci.yml`
-- Tests run on `ubuntu-latest` with Go version from `go.mod` (1.22)
+- Tests run on `ubuntu-latest` with Go version from `go.mod` (1.25)
 - Command: `go test -v -race -count=1 ./...`
 - Flags: `-v` (verbose), `-race` (race detector), `-count=1` (disable test caching)
 - Tests run in parallel with lint (both depend on change detection, not each other)
@@ -165,7 +165,7 @@ go tool cover -func=coverage.out             # Per-function coverage summary
 
 **Race Detector:**
 - Enabled in both `make test` and CI via `-race` flag
-- Relevant because of package-level mutable state (`inputs`, `failed` in `main.go`)
+- Relevant because `App` is used from the main goroutine with a signal handler goroutine
 
 ## Common Patterns
 

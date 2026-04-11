@@ -1,55 +1,92 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-04-10
+**Analysis Date:** 2026-04-10 (updated post-M0 restructure)
 
 ## Directory Layout
 
 ```
 mxlrc-go/
-├── .claude/                # Claude Code configuration
-│   ├── commands/           # Custom slash commands (new-issue, prep-pr, post-merge-cleanup)
-│   ├── settings.json       # Shared Claude settings
-│   └── settings.local.json # Local Claude settings (gitignored)
-├── .githooks/              # Git hooks
-│   └── pre-commit          # Pre-commit quality checks
-├── .github/                # GitHub configuration
-│   ├── workflows/          # CI/CD pipelines
-│   │   ├── ci.yml          # Lint, test, build matrix
-│   │   ├── codeql.yml      # Security scanning
-│   │   ├── release.yml     # GoReleaser on version tags
+├── cmd/
+│   └── mxlrcsvc-go/
+│       └── main.go             # CLI entry point, token resolution, dependency wiring
+├── internal/
+│   ├── app/
+│   │   ├── app.go              # App struct, Run(ctx), timer, handleFailed
+│   │   └── queue.go            # InputsQueue FIFO implementation
+│   ├── lyrics/
+│   │   ├── writer.go           # LRCWriter, WriteLRC, write{Synced,Unsynced,Instrumental}LRC
+│   │   ├── slugify.go          # Slugify() filename sanitization
+│   │   └── slugify_test.go     # Tests for Slugify
+│   ├── models/
+│   │   └── models.go           # Track, Song, Lyrics, Synced, Lines, Time, Inputs
+│   ├── musixmatch/
+│   │   ├── client.go           # Client struct, FindLyrics(ctx, Track)
+│   │   └── fetcher.go          # Fetcher interface
+│   └── scanner/
+│       └── scanner.go          # Scanner, ParseInput, GetSong{Multi,Text,Dir}, AssertInput
+├── .claude/                    # Claude Code configuration
+│   ├── commands/               # Custom slash commands
+│   ├── settings.json
+│   └── settings.local.json     # (gitignored)
+├── .githooks/
+│   └── pre-commit              # Pre-commit quality checks
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   ├── codeql.yml
+│   │   ├── release.yml
 │   │   ├── dependabot-auto-approve.yml
 │   │   └── dependabot-merge.yml
-│   └── dependabot.yml      # Dependency update config
-├── .planning/              # Planning documents
-│   └── codebase/           # Codebase analysis docs (this directory)
-├── main.go                 # CLI entry point, orchestration loop
-├── musixmatch.go           # Musixmatch API client
-├── lyrics.go               # LRC file formatting and writing
-├── structs.go              # All data types and InputsQueue
-├── utils.go                # Input parsing, directory scanning, helpers
-├── utils_test.go           # Tests for utility functions
-├── go.mod                  # Go module definition
-├── go.sum                  # Dependency checksums
-├── Makefile                # Build, test, lint, format commands
-├── CLAUDE.md               # Project guidance for AI assistants
-├── README.md               # Project documentation
-├── LICENSE                 # MIT license
-├── .golangci.yml           # Linter configuration
-├── .goreleaser.yml         # Cross-platform release builds
-├── .pre-commit-config.yaml # Pre-commit framework hooks
-├── .editorconfig           # Editor formatting rules
-├── .gitattributes          # Git file attributes
-├── .gitignore              # Ignored files/directories
-├── .typos.toml             # Spell-checker config
-└── .coderabbit.yml         # CodeRabbit review config
+│   └── dependabot.yml
+├── .planning/                  # Planning documents
+│   └── codebase/               # Codebase analysis docs
+├── go.mod                      # Module: github.com/sydlexius/mxlrcsvc-go, Go 1.25
+├── go.sum
+├── Makefile
+├── AGENTS.md                   # Project guidance for AI assistants
+├── README.md
+├── LICENSE
+├── .golangci.yml
+├── .goreleaser.yml
+├── .pre-commit-config.yaml
+├── .editorconfig
+├── .gitattributes
+├── .gitignore
+├── .typos.toml
+└── .coderabbit.yml
 ```
 
 ## Directory Purposes
 
-**Root (`.`):**
-- Purpose: All application source code lives here (flat structure, single `main` package)
-- Contains: 5 Go source files, 1 test file, module files, config files
-- Key files: `main.go`, `musixmatch.go`, `lyrics.go`, `structs.go`, `utils.go`
+**`cmd/mxlrcsvc-go/`:**
+- Purpose: Binary entry point — the only `package main`
+- Contains: `main.go` (token resolution, signal context, dependency wiring, `App.Run`)
+- Key file: `main.go`
+
+**`internal/app/`:**
+- Purpose: Processing orchestration and queue management
+- Contains: `App` struct (owns all state), `InputsQueue` FIFO
+- Key files: `app.go`, `queue.go`
+
+**`internal/musixmatch/`:**
+- Purpose: Musixmatch API client
+- Contains: `Client` implementation, `Fetcher` interface
+- Key files: `client.go`, `fetcher.go`
+
+**`internal/lyrics/`:**
+- Purpose: LRC file formatting and writing
+- Contains: `LRCWriter`, `Writer` interface, `Slugify()`
+- Key files: `writer.go`, `slugify.go`, `slugify_test.go`
+
+**`internal/models/`:**
+- Purpose: Shared data types (leaf package — no internal imports)
+- Contains: All structs used across packages
+- Key file: `models.go`
+
+**`internal/scanner/`:**
+- Purpose: Input parsing and directory scanning
+- Contains: `Scanner`, mode detection, audio metadata reading
+- Key file: `scanner.go`
 
 **`.github/workflows/`:**
 - Purpose: CI/CD pipeline definitions
@@ -62,77 +99,72 @@ mxlrc-go/
 
 **`.planning/codebase/`:**
 - Purpose: Codebase analysis documents consumed by planning/execution agents
-- Contains: Architecture, structure, conventions, concerns documentation
 - Generated: Yes (by codebase mapping)
 - Committed: Yes
 
 ## Key File Locations
 
 **Entry Points:**
-- `main.go`: CLI entry point. `func main()` at line 18. Parses args, runs processing loop.
+- `cmd/mxlrcsvc-go/main.go`: CLI entry point. `func main()` — token resolution, wires all dependencies, calls `App.Run(ctx)`.
 
 **Configuration:**
-- `go.mod`: Module path `github.com/fashni/mxlrc-go`, Go 1.22
+- `go.mod`: Module path `github.com/sydlexius/mxlrcsvc-go`, Go 1.25
 - `.golangci.yml`: Linter rules (errcheck, govet, staticcheck, gosec, revive, etc.)
-- `.goreleaser.yml`: Cross-platform build matrix (linux/darwin/windows, amd64/arm64)
+- `.goreleaser.yml`: Cross-platform build matrix — binary name `mxlrcsvc-go`, build path `./cmd/mxlrcsvc-go`
 - `Makefile`: Build/test/lint/format commands
 - `.pre-commit-config.yaml`: Pre-commit framework hooks
 
 **Core Logic:**
-- `musixmatch.go`: API client. `Musixmatch.findLyrics(Track) (Song, error)` at line 24.
-- `lyrics.go`: LRC output. `writeLRC(Song, string, string) bool` at line 12.
-- `utils.go`: Input parsing. `parseInput(Args, *InputsQueue) string` at line 122.
-- `structs.go`: All types. `Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Args`, `Inputs`, `InputsQueue`.
+- `internal/musixmatch/client.go`: API client. `Client.FindLyrics(ctx, Track) (Song, error)`.
+- `internal/lyrics/writer.go`: LRC output. `LRCWriter.WriteLRC(Song, string, string) error`.
+- `internal/scanner/scanner.go`: Input parsing. `Scanner.ParseInput(...)`.
+- `internal/models/models.go`: All shared types. `Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Inputs`.
+- `internal/app/queue.go`: Queue. `InputsQueue` with safe `Next()`/`Pop()` returning `(models.Inputs, error)`.
 
 **Testing:**
-- `utils_test.go`: Unit tests for `slugify()`. Only test file in the project.
+- `internal/lyrics/slugify_test.go`: Unit tests for `Slugify()`. Only test file in the project.
 
 ## Naming Conventions
 
 **Files:**
-- Go source: lowercase, single-word or compound-word names: `main.go`, `musixmatch.go`, `lyrics.go`, `structs.go`, `utils.go`
-- Test files: `{source}_test.go` pattern: `utils_test.go`
+- Go source: lowercase, single-word or compound-word names: `main.go`, `client.go`, `writer.go`, `slugify.go`
+- Test files: `{source}_test.go` pattern: `slugify_test.go`
 - Config files: dotfiles with standard names: `.golangci.yml`, `.goreleaser.yml`, `.editorconfig`
 
 **Functions:**
-- camelCase: `findLyrics`, `writeLRC`, `parseInput`, `getSongDir`, `getSongMulti`, `getSongText`, `assertInput`, `slugify`, `isInArray`
-- Exported functions: PascalCase (none currently -- all functions are unexported `main` package functions)
-- Method receivers: short names matching struct initial: `mx Musixmatch`, `q *InputsQueue`
+- PascalCase for all exported: `FindLyrics`, `WriteLRC`, `ParseInput`, `GetSongDir`, `Slugify`, `AssertInput`
+- camelCase for unexported helpers: `writeSyncedLRC`, `writeUnsyncedLRC`, `writeInstrumentalLRC`
+- Method receivers: short names matching struct initial: `c *Client`, `w *LRCWriter`, `q *InputsQueue`, `sc *Scanner`
 
 **Variables:**
-- snake_case used in some older code: `song_list`, `text_fn`, `save_path`, `lrc_file` (in `utils.go`)
-- camelCase used in newer code: `baseURL`, `maxSec`, `errBody` (in `musixmatch.go`, `main.go`)
-- Package-level globals: short names: `inputs`, `failed` (`main.go:15-16`)
+- camelCase throughout new code
+- Package-level globals eliminated — state lives in `App` struct
 
 **Types:**
-- PascalCase structs: `Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Args`, `Inputs`, `InputsQueue`
+- PascalCase structs: `Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Inputs`, `InputsQueue`, `App`, `Client`, `LRCWriter`, `Scanner`
 - JSON tags use Musixmatch API field names: `json:"track_name,omitempty"`
 
 **Constants:**
-- ALL_CAPS for the single constant: `URL` (`musixmatch.go:18`)
+- `apiURL` in `internal/musixmatch/client.go` (unexported, package-level)
 
 ## Where to Add New Code
 
 **New Feature (e.g., new input mode, new output format):**
-- Primary code: Add to the appropriate existing file based on responsibility:
-  - API interactions: `musixmatch.go`
-  - Output formatting: `lyrics.go`
-  - Input parsing/scanning: `utils.go`
-  - New types: `structs.go`
-  - CLI flags/orchestration: `main.go`
-- Tests: Create `{file}_test.go` alongside the source (e.g., `lyrics_test.go`, `musixmatch_test.go`)
+- Musixmatch API client: `internal/musixmatch/`
+- Output formatting: `internal/lyrics/`
+- Input parsing/scanning: `internal/scanner/`
+- New types: `internal/models/models.go`
+- CLI flags/orchestration: `cmd/mxlrcsvc-go/main.go`
+- Tests: `{package}_test.go` alongside source in same `internal/` package
 
-**New Subcommand or Major Feature (e.g., database caching, batch mode):**
-- If it stays in `main` package: Add a new file named for the feature (e.g., `cache.go`, `database.go`)
-- If it warrants separation: Consider creating internal packages (`internal/api/`, `internal/lrc/`, etc.) -- but note the project currently follows a deliberate flat structure
-
-**New Utility Function:**
-- Shared helpers: `utils.go`
-- Tests: `utils_test.go`
+**New Internal Package:**
+- Create `internal/<name>/` with focused responsibility
+- Define an interface in the consuming package (not the implementing package)
+- Depend only on `internal/models` and Go stdlib where possible
 
 **New External Integration:**
 - Add dependency: `go get <package>` (updates `go.mod` and `go.sum`)
-- Wrap in a new file or add to existing file matching the responsibility area
+- Wrap in a new `internal/` package
 
 **New CI/CD Step:**
 - Workflow files: `.github/workflows/`
@@ -167,4 +199,4 @@ mxlrc-go/
 
 ---
 
-*Structure analysis: 2026-04-10*
+*Structure analysis: 2026-04-10 | Updated post-M0: 2026-04-11*

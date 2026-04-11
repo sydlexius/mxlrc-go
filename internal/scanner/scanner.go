@@ -85,7 +85,7 @@ func (sc *Scanner) GetSongDir(dir string, songs *app.InputsQueue, update bool, l
 		if id1 == id2 {
 			return files[i].Name() < files[j].Name()
 		}
-		return !bfs || !id1 && id2
+		return bfs != id1
 	})
 
 	for _, file := range files {

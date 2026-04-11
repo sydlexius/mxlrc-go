@@ -51,7 +51,7 @@ The `godotenv.Load()` call is intentionally placed before any token logic. Becau
 
 - [x] `cmd/mxlrcsvc-go/main.go` is the sole entry point (LAYOUT-01)
 - [x] Token precedence: CLI flag > env var > .env file, with error on missing (API-02)
-- [x] Zero hardcoded tokens in source — hardcoded token `2203269256ff7abcb649269df00e14c833dbf4ddfb5b36a1aae8b0` removed (API-03)
+- [x] Zero hardcoded tokens in source — hardcoded token `[REDACTED]` removed (API-03)
 - [x] godotenv v1.5.1 in go.mod as direct dependency (BUILD-07)
 - [x] All existing tests pass (`go test ./...`)
 - [x] All lints clean (`go vet ./...`, golangci-lint via pre-commit)

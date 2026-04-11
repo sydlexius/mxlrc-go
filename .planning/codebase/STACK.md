@@ -5,7 +5,7 @@
 ## Languages
 
 **Primary:**
-- Go 1.22 (minimum, per `go.mod`) - All application code
+- Go 1.25 (minimum, per `go.mod`) - All application code
 
 **Secondary:**
 - Bash - Pre-commit hooks (`.githooks/pre-commit`), Makefile targets
@@ -25,7 +25,7 @@
 
 **Core:**
 - None - Pure Go standard library for HTTP, I/O, and CLI orchestration
-- `github.com/alexflint/go-arg` v1.4.3 - CLI argument parsing via struct tags (`main.go`, `structs.go`)
+- `github.com/alexflint/go-arg` v1.6.1 - CLI argument parsing via struct tags (`cmd/mxlrcsvc-go/main.go`)
 
 **Testing:**
 - Go standard `testing` package - No third-party test framework
@@ -38,22 +38,23 @@
 ## Key Dependencies
 
 **Critical (direct):**
-- `github.com/alexflint/go-arg` v1.4.3 - CLI argument parsing. Defines the entire user interface via struct tags on `Args` in `structs.go`
-- `github.com/dhowden/tag` v0.0.0-20220618230019 - Audio file metadata reading (ID3, MP4, FLAC, OGG, DSF). Used in `utils.go` for directory-scan mode
-- `github.com/valyala/fastjson` v1.6.3 - High-performance JSON parsing for Musixmatch API responses. Used in `musixmatch.go` to navigate deeply nested JSON
-- `golang.org/x/text` v0.3.8 - Unicode normalization (NFKC) for filename sanitization in `slugify()` (`utils.go`)
+- `github.com/alexflint/go-arg` v1.6.1 - CLI argument parsing. Defines the user interface via struct tags on `Args` in `cmd/mxlrcsvc-go/main.go`
+- `github.com/dhowden/tag` v0.0.0-20240417053706 - Audio file metadata reading (ID3, MP4, FLAC, OGG, DSF). Used in `internal/scanner/scanner.go` for directory-scan mode
+- `github.com/joho/godotenv` v1.5.1 - Optional `.env` file loading for token resolution. Used in `cmd/mxlrcsvc-go/main.go`
+- `github.com/valyala/fastjson` v1.6.10 - High-performance JSON parsing for Musixmatch API responses. Used in `internal/musixmatch/client.go`
+- `golang.org/x/text` v0.36.0 - Unicode normalization (NFKC) for filename sanitization in `Slugify()` (`internal/lyrics/slugify.go`)
 
 **Indirect:**
-- `github.com/alexflint/go-scalar` v1.1.0 - Transitive dependency of go-arg
+- `github.com/alexflint/go-scalar` v1.2.0 - Transitive dependency of go-arg
 
 ## Configuration
 
 **Environment:**
-- No `.env` files - Configuration is entirely via CLI flags
-- Musixmatch API token: passed via `-t/--token` flag or falls back to a hardcoded default token in `main.go`
-- No environment variables required for operation
+- Token resolution: `--token` CLI flag > `MUSIXMATCH_TOKEN` env var > `.env` file (loaded via godotenv)
+- No hardcoded token fallback — missing token is a fatal startup error
+- Optional `.env` file in working directory for local development
 
-**CLI Arguments** (defined in `structs.go` `Args` struct):
+**CLI Arguments** (defined in `cmd/mxlrcsvc-go/main.go` `Args` struct):
 - `Song` (positional, required) - Song info as `artist,title` pairs, a `.txt` file path, or a directory path
 - `-o/--outdir` (default: `lyrics`) - Output directory for `.lrc` files
 - `-c/--cooldown` (default: `15`) - Cooldown between API requests in seconds
@@ -77,7 +78,7 @@
 ## Platform Requirements
 
 **Development:**
-- Go 1.22+
+- Go 1.25+
 - golangci-lint v2.11+ (for linting)
 - typos-cli (for spell checking)
 - govulncheck (for vulnerability scanning)

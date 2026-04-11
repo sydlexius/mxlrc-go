@@ -1,52 +1,59 @@
 # Architecture
 
-**Analysis Date:** 2026-04-10
+**Analysis Date:** 2026-04-10 (updated post-M0 restructure)
 
 ## Pattern Overview
 
-**Overall:** Single-package CLI application (flat `main` package, no internal packages)
+**Overall:** Multi-package CLI application (`cmd/` entry point + `internal/` domain packages)
 
 **Key Characteristics:**
-- All source files live in a single `main` package with no subdirectories
-- Procedural architecture organized by responsibility (API, lyrics, utils, types)
-- No dependency injection -- structs are instantiated directly in `main()`
-- Global mutable state via package-level `InputsQueue` variables
+- Entry point lives in `cmd/mxlrcsvc-go/main.go`; all domain logic lives in `internal/`
+- Procedural architecture organized by responsibility across discrete packages
+- Dependency injection via interfaces (`musixmatch.Fetcher`, `lyrics.Writer`)
+- `App` struct owns all processing state — no package-level globals
 - Sequential processing loop with cooldown timer between API calls
 
 ## Layers
 
 **CLI / Entry Point Layer:**
-- Purpose: Parse CLI arguments, orchestrate the main processing loop, handle signals
-- Location: `main.go`
-- Contains: `main()`, `timer()`, `failedHandler()`, `closeHandler()`
-- Depends on: `go-arg` for argument parsing, `InputsQueue` (structs.go), `parseInput()` (utils.go), `Musixmatch.findLyrics()` (musixmatch.go), `writeLRC()` (lyrics.go)
+- Purpose: Parse CLI arguments, load token, wire dependencies, start App
+- Location: `cmd/mxlrcsvc-go/main.go`
+- Contains: `main()`, signal context setup, token resolution
+- Depends on: `go-arg`, `godotenv`, `internal/app`, `internal/musixmatch`, `internal/lyrics`, `internal/scanner`
 - Used by: Nothing (top-level entry point)
+
+**App Orchestration Layer:**
+- Purpose: Own processing state, run the fetch loop, handle failures
+- Location: `internal/app/app.go`, `internal/app/queue.go`
+- Contains: `App` struct, `App.Run(ctx)`, `App.timer()`, `App.handleFailed()`, `InputsQueue`
+- Depends on: `musixmatch.Fetcher`, `lyrics.Writer`, `internal/models`
+- Used by: `cmd/mxlrcsvc-go/main.go`
 
 **API Client Layer:**
 - Purpose: Communicate with the Musixmatch desktop API, parse responses, return structured song data
-- Location: `musixmatch.go`
-- Contains: `Musixmatch` struct, `findLyrics(Track) (Song, error)` method
-- Depends on: `net/http`, `fastjson`, `encoding/json`, types from `structs.go`
-- Used by: `main.go` processing loop
+- Location: `internal/musixmatch/client.go`, `internal/musixmatch/fetcher.go`
+- Contains: `Client` struct, `FindLyrics(ctx, Track) (Song, error)` method, `Fetcher` interface
+- Depends on: `net/http`, `fastjson`, `encoding/json`, `internal/models`
+- Used by: `internal/app` via `Fetcher` interface
 
 **Output / Lyrics Writer Layer:**
 - Purpose: Format song data into LRC format and write to disk
-- Location: `lyrics.go`
-- Contains: `writeLRC()`, `writeSyncedLRC()`, `writeUnsyncedLRC()`, `writeInstrumentalLRC()`
-- Depends on: `Song` type from `structs.go`, `slugify()` from `utils.go`
-- Used by: `main.go` processing loop
+- Location: `internal/lyrics/writer.go`, `internal/lyrics/slugify.go`
+- Contains: `LRCWriter`, `WriteLRC()`, `writeSyncedLRC()`, `writeUnsyncedLRC()`, `writeInstrumentalLRC()`, `Slugify()`
+- Depends on: `internal/models`, `golang.org/x/text/unicode/norm`
+- Used by: `internal/app` via `Writer` interface
 
-**Utilities Layer:**
-- Purpose: Input parsing, directory scanning, filename sanitization, generic helpers
-- Location: `utils.go`
-- Contains: `parseInput()`, `getSongMulti()`, `getSongText()`, `getSongDir()`, `slugify()`, `isInArray()`, `assertInput()`, `supportedFType()`
-- Depends on: `dhowden/tag` for audio metadata, `golang.org/x/text/unicode/norm` for NFKC normalization, types from `structs.go`
-- Used by: `main.go` (via `parseInput()`), `lyrics.go` (via `slugify()`)
+**Scanner / Input Layer:**
+- Purpose: Input parsing, directory scanning, filename sanitization
+- Location: `internal/scanner/scanner.go`
+- Contains: `Scanner`, `ParseInput()`, `GetSongMulti()`, `GetSongText()`, `GetSongDir()`, `AssertInput()`
+- Depends on: `dhowden/tag`, `internal/app` (for `InputsQueue`), `internal/models`
+- Used by: `cmd/mxlrcsvc-go/main.go`
 
-**Types Layer:**
+**Models Layer:**
 - Purpose: Define all data structures used across the application
-- Location: `structs.go`
-- Contains: `Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Args`, `Inputs`, `InputsQueue`
+- Location: `internal/models/models.go`
+- Contains: `Track`, `Song`, `Lyrics`, `Synced`, `Lines`, `Time`, `Inputs`
 - Depends on: Nothing (pure data definitions)
 - Used by: Every other layer
 
@@ -54,86 +61,90 @@
 
 **Main Processing Pipeline:**
 
-1. `main()` parses CLI args via `go-arg` into `Args` struct (`main.go:20`)
-2. `parseInput()` detects input mode (CLI/text-file/directory) and populates the global `inputs` queue (`utils.go:122-139`)
-3. For directory mode, `getSongDir()` recursively scans audio files and reads metadata via `dhowden/tag` (`utils.go:63-120`)
-4. Main loop iterates `inputs` queue: for each `Inputs` item, calls `mx.findLyrics(cur.Track)` (`main.go:43-60`)
-5. `findLyrics()` builds HTTP request to `apic-desktop.musixmatch.com`, parses nested JSON response via `fastjson`, unmarshals track/lyrics/subtitle data into `Song` struct (`musixmatch.go:24-141`)
-6. `writeLRC()` dispatches to the appropriate writer (`writeSyncedLRC`, `writeUnsyncedLRC`, or `writeInstrumentalLRC`) based on available content (`lyrics.go:12-77`)
-7. LRC file is written to disk with metadata tags (artist, title, album, length) and formatted lyrics lines
-8. Failed items are collected in the global `failed` queue; on completion or SIGTERM, `failedHandler()` writes `_failed.txt` for retry (`main.go:77-115`)
+1. `main()` loads `.env` via `godotenv`, parses CLI args, resolves token (flag > env var > .env), sets up signal context
+2. `scanner.ParseInput()` detects input mode (CLI/text-file/directory) and populates an `InputsQueue`
+3. For directory mode, `GetSongDir()` recursively scans audio files and reads metadata via `dhowden/tag`
+4. `App.Run(ctx)` iterates the inputs queue: for each `Inputs` item, calls `fetcher.FindLyrics(ctx, cur.Track)`
+5. `FindLyrics()` builds HTTP request (with run context for cancellation), parses nested JSON via `fastjson`, unmarshals into `Song` struct
+6. `writer.WriteLRC()` checks content eligibility first, then dispatches to `writeSyncedLRC`, `writeUnsyncedLRC`, or `writeInstrumentalLRC`
+7. LRC file is written to disk with metadata tags and formatted lyrics lines
+8. Failed items are collected in `App.failed`; on completion or SIGTERM, `handleFailed()` writes `_failed.txt` for retry
 
-**Input Detection Flow (parseInput):**
+**Input Detection Flow (ParseInput):**
 
-1. If exactly one positional arg AND it's an existing file path: treat as text file (`utils.go:124-128`)
-2. If exactly one positional arg AND it's an existing directory: treat as directory scan (`utils.go:129-131`)
-3. Otherwise: treat all positional args as `artist,title` pairs (`utils.go:137`)
+1. If exactly one positional arg AND it's an existing file path: treat as text file
+2. If exactly one positional arg AND it's an existing directory: treat as directory scan
+3. Otherwise: treat all positional args as `artist,title` pairs
 
 **State Management:**
-- Two package-level global variables: `inputs InputsQueue` and `failed InputsQueue` (`main.go:15-16`)
-- `InputsQueue` is a simple FIFO queue backed by a slice (`structs.go:55-79`)
-- No concurrency primitives -- single-threaded sequential processing
+- `App` struct owns `inputs *InputsQueue` and `failed *InputsQueue` — no package-level globals
+- `InputsQueue` is a slice-backed FIFO queue with safe `Next()`/`Pop()` returning `(value, error)` (`internal/app/queue.go`)
+- No concurrency primitives — single-threaded sequential processing
 - State is not persisted between runs (except the `_failed.txt` retry file)
 
 ## Key Abstractions
 
 **InputsQueue:**
 - Purpose: FIFO queue holding items to process (or that failed)
-- Examples: `structs.go:55-79`
-- Pattern: Simple slice-backed queue with `next()`, `pop()`, `push()`, `len()`, `empty()` methods
-- Note: `next()` peeks without removing; `pop()` removes and returns the front item
+- Location: `internal/app/queue.go`
+- Pattern: Slice-backed queue with `Next()`, `Pop()` (both return `(models.Inputs, error)`), `Push()`, `Len()`, `Empty()`
 
-**Musixmatch:**
-- Purpose: API client for the Musixmatch desktop endpoint
-- Examples: `musixmatch.go:20-22`
-- Pattern: Struct with a single `Token` field; stateless except for the token. New `http.Client` created per request.
+**musixmatch.Fetcher (interface):**
+- Purpose: Abstracts lyrics lookup; enables testing without real HTTP calls
+- Location: `internal/musixmatch/fetcher.go`
+- Pattern: `FindLyrics(ctx context.Context, track models.Track) (models.Song, error)`
+
+**lyrics.Writer (interface):**
+- Purpose: Abstracts LRC file output; enables testing without real disk writes
+- Location: `internal/lyrics/writer.go`
+- Pattern: `WriteLRC(song models.Song, filename string, outdir string) error`
 
 **Song / Track / Lyrics / Synced:**
 - Purpose: Represent the full result from a lyrics lookup
-- Examples: `structs.go:1-37`
+- Location: `internal/models/models.go`
 - Pattern: Nested value types. `Song` composes `Track`, `Lyrics`, and `Synced`. JSON tags map to Musixmatch API response fields.
 
 **Inputs:**
 - Purpose: Represent a single work item in the processing queue
-- Examples: `structs.go:39-43`
+- Location: `internal/models/models.go`
 - Pattern: Bundles a `Track` (what to search for) with `Outdir` and `Filename` (where to write output)
 
 ## Entry Points
 
 **CLI Entry Point:**
-- Location: `main.go:18` (`func main()`)
-- Triggers: Direct CLI invocation (`mxlrc-go [args]`)
-- Responsibilities: Parses args, populates input queue, creates `Musixmatch` client, runs processing loop, handles failures and graceful shutdown
+- Location: `cmd/mxlrcsvc-go/main.go` (`func main()`)
+- Triggers: Direct CLI invocation (`mxlrcsvc-go [args]`)
+- Responsibilities: Token resolution, wires fetcher/writer/scanner/app, starts `App.Run(ctx)`
 
 **Build Entry Point:**
-- Location: `Makefile:7-8` and `.goreleaser.yml:3-4`
+- Location: `Makefile` and `.goreleaser.yml`
 - Triggers: `make build` or GoReleaser on tag push
-- Responsibilities: Compiles `main` package into `mxlrc-go` binary
+- Responsibilities: Compiles `cmd/mxlrcsvc-go` into `mxlrcsvc-go` binary
 
 ## Error Handling
 
-**Strategy:** Return `error` from functions, log and continue on non-fatal errors, `log.Fatal` on unrecoverable errors
+**Strategy:** Return `error` from functions, log and continue on non-fatal errors, `os.Exit(1)` on unrecoverable startup errors
 
 **Patterns:**
-- `findLyrics()` returns `(Song, error)` -- caller logs the error and pushes the item to the `failed` queue (`main.go:56-58`)
-- `writeLRC()` returns `bool` success flag instead of `error` -- internally logs errors before returning `false` (`lyrics.go:12`)
-- File I/O errors during input parsing (`getSongText`, `getSongDir`) call `log.Fatal()` -- immediate termination (`utils.go:48`, `utils.go:67`)
-- HTTP status codes mapped to specific error messages: 401 = "too many requests", 404 = "no results found" (`musixmatch.go:66-74`)
-- Response body size is capped at 2 MiB to prevent memory exhaustion (`musixmatch.go:77-84`)
-- `defer` pattern used for closing `http.Response.Body` and output files (`musixmatch.go:63`, `lyrics.go:36-41`)
+- `FindLyrics()` returns `(Song, error)` — caller logs and pushes to `failed` queue
+- `WriteLRC()` returns `error` — caller logs and pushes to `failed` queue
+- `Next()`/`Pop()` return `(models.Inputs, error)` — safe against empty-queue panic
+- HTTP status codes mapped to specific error messages: 401 = "too many requests", 404 = "no results found"
+- Response body size is capped at 2 MiB to prevent memory exhaustion
+- `defer` pattern used for closing `http.Response.Body` and output files
 
 ## Cross-Cutting Concerns
 
-**Logging:** Standard library `log` package throughout. No structured logging. All log output goes to stderr. Messages use `log.Printf` for informational, `log.Println` for simple messages, `log.Fatal` for unrecoverable errors.
+**Logging:** `log/slog` throughout. Structured key-value pairs. All log output goes to stderr.
 
-**Validation:** Input validation happens in `assertInput()` (`utils.go:22-32`) -- checks that input string splits into exactly 2 comma-separated parts. File extension validation in `getSongDir()` via `isInArray(supportedFType(), ...)` (`utils.go:94`). No validation on API token format.
+**Validation:** Input validation in `AssertInput()` — checks that input string splits into exactly 2 comma-separated parts. File extension validation in `GetSongDir()`. No validation on API token format.
 
-**Authentication:** Single Musixmatch API token passed via `--token` flag or hardcoded default (`main.go:36-38`). Token is sent as `usertoken` query parameter to the desktop API endpoint.
+**Authentication:** Token resolved with precedence: `--token` CLI flag > `MUSIXMATCH_TOKEN` env var > `.env` file (loaded via `godotenv`). No hardcoded fallback — missing token is a fatal startup error.
 
-**Graceful Shutdown:** `closeHandler()` listens for SIGTERM/SIGINT and calls `failedHandler()` to save unprocessed items before exiting (`main.go:117-126`).
+**Graceful Shutdown:** Signal context (`context.WithCancel`) propagated through `App.Run(ctx)` and into `FindLyrics(ctx, ...)` so in-flight HTTP requests respect Ctrl+C / SIGTERM.
 
-**Rate Limiting:** Simple cooldown timer between API calls, configurable via `--cooldown` flag (default 15 seconds). Implemented as a blocking countdown in `timer()` (`main.go:66-75`).
+**Rate Limiting:** Simple cooldown timer between API calls, configurable via `--cooldown` flag (default 15 seconds). Implemented as a ticker-based countdown in `App.timer(ctx)` that respects context cancellation.
 
 ---
 
-*Architecture analysis: 2026-04-10*
+*Architecture analysis: 2026-04-10 | Updated post-M0: 2026-04-11*

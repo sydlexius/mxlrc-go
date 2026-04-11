@@ -15,7 +15,7 @@ Command line tool to fetch synced lyrics from [Musixmatch](https://www.musixmatc
 **TBA**
 
 ### Build from source
-Required Go 1.24+
+Required Go 1.25+
 ```
 go install github.com/sydlexius/mxlrcsvc-go/cmd/mxlrcsvc-go@latest
 ```

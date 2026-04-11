@@ -7,8 +7,8 @@
 **Musixmatch Lyrics API:**
 - Purpose: Fetch synced lyrics, unsynced lyrics, and track metadata for songs
 - Base URL: `https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get`
-- SDK/Client: Direct HTTP via Go `net/http` standard library (`musixmatch.go`)
-- Auth: User token passed as `usertoken` query parameter. Supplied via `-t/--token` CLI flag or hardcoded fallback in `main.go`
+- SDK/Client: Direct HTTP via Go `net/http` standard library (`internal/musixmatch/client.go`)
+- Auth: User token passed as `usertoken` query parameter. Resolved with precedence: `--token` CLI flag > `MUSIXMATCH_TOKEN` env var > `.env` file (via godotenv). No hardcoded fallback.
 - HTTP method: GET
 - Request timeout: 30 seconds (`musixmatch.go` line 48)
 - Response parsing: `github.com/valyala/fastjson` for initial navigation, then `encoding/json` Unmarshal for typed structs
@@ -50,7 +50,7 @@
 
 **Auth Provider:**
 - None (CLI tool, no user authentication)
-- Musixmatch API token is the only credential, passed via CLI flag or using a hardcoded default
+- Musixmatch API token is the only credential, supplied via CLI flag, environment variable, or `.env` file (no compiled default)
 
 ## Monitoring & Observability
 
@@ -82,14 +82,17 @@
 ## Environment Configuration
 
 **Required env vars:**
-- None for application operation
+- None if `--token` CLI flag is provided; otherwise `MUSIXMATCH_TOKEN` must be set (or present in `.env`)
+
+**Optional:**
+- `.env` file in working directory — loaded via `godotenv` before token resolution
 
 **CI/CD secrets:**
 - `GITHUB_TOKEN` - Used by GoReleaser for release creation and by Dependabot workflows for PR management
 
 **Secrets location:**
 - GitHub Actions secrets (repository settings)
-- No local secret files
+- Optional local `.env` file for token loading (gitignored)
 
 ## Webhooks & Callbacks
 
@@ -103,7 +106,7 @@
 
 **Library:** `github.com/dhowden/tag`
 - Purpose: Read artist/title metadata from audio files in directory-scan mode
-- Used in: `utils.go` `getSongDir()`
+- Used in: `internal/scanner/scanner.go` `GetSongDir()`
 - Supported formats: `.mp3`, `.m4a`, `.m4b`, `.m4p`, `.alac`, `.flac`, `.ogg`, `.dsf` (defined in `supportedFType()`)
 - Metadata fields used: `Artist()`, `Title()`
 

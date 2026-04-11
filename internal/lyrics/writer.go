@@ -26,6 +26,13 @@ func NewLRCWriter() *LRCWriter {
 
 // WriteLRC writes the song lyrics to an LRC file in the given output directory.
 func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (retErr error) {
+	hasSynced := len(song.Subtitles.Lines) > 0
+	hasUnsynced := song.Lyrics.LyricsBody != ""
+	isInstrumental := song.Track.Instrumental == 1
+	if !hasSynced && !hasUnsynced && !isInstrumental {
+		return fmt.Errorf("nothing to save for %s - %s", song.Track.ArtistName, song.Track.TrackName)
+	}
+
 	var fn string
 	if fn = filename; filename == "" {
 		fn = Slugify(fmt.Sprintf("%s - %s", song.Track.ArtistName, song.Track.TrackName)) + ".lrc"
@@ -61,7 +68,7 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 		}
 	}
 
-	if len(song.Subtitles.Lines) > 0 {
+	if hasSynced {
 		slog.Info("saving synced lyrics")
 		if err := writeSyncedLRC(song, buffer); err != nil {
 			return err
@@ -69,7 +76,7 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 		slog.Info("lyrics saved", "path", fp, "type", "synced")
 		return nil
 	}
-	if song.Lyrics.LyricsBody != "" {
+	if hasUnsynced {
 		slog.Info("saving unsynced lyrics")
 		if err := writeUnsyncedLRC(song, buffer); err != nil {
 			return err
@@ -77,15 +84,13 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 		slog.Info("lyrics saved", "path", fp, "type", "unsynced")
 		return nil
 	}
-	if song.Track.Instrumental == 1 {
-		slog.Info("saving instrumental")
-		if err := writeInstrumentalLRC(buffer); err != nil {
-			return err
-		}
-		slog.Info("lyrics saved", "path", fp, "type", "instrumental")
-		return nil
+	// isInstrumental is true here (checked at top)
+	slog.Info("saving instrumental")
+	if err := writeInstrumentalLRC(buffer); err != nil {
+		return err
 	}
-	return fmt.Errorf("nothing to save for %s - %s", song.Track.ArtistName, song.Track.TrackName)
+	slog.Info("lyrics saved", "path", fp, "type", "instrumental")
+	return nil
 }
 
 func writeSyncedLRC(song models.Song, buff *bufio.Writer) error {

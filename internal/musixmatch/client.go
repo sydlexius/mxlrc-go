@@ -33,7 +33,7 @@ func NewClient(token string) *Client {
 }
 
 // FindLyrics looks up lyrics for the given track from the Musixmatch API.
-func (c *Client) FindLyrics(track models.Track) (models.Song, error) {
+func (c *Client) FindLyrics(ctx context.Context, track models.Track) (models.Song, error) {
 	song := models.Song{}
 	baseURL, err := url.Parse(apiURL)
 	if err != nil {
@@ -55,7 +55,7 @@ func (c *Client) FindLyrics(track models.Track) (models.Song, error) {
 	}
 	baseURL.RawQuery = params.Encode()
 
-	req, err := http.NewRequestWithContext(context.Background(), "GET", baseURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL.String(), nil)
 	if err != nil {
 		return song, err
 	}
