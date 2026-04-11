@@ -11,3 +11,5 @@ extend-exclude = [
 # ID3v2 frame names are not English words
 TIT2 = "TIT2"
 TPE1 = "TPE1"
+# git commit hash substrings
+ba = "ba"
