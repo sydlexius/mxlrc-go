@@ -58,7 +58,10 @@ Plans:
   2. Token is loaded with correct precedence: CLI `--token` flag > `MUSIXMATCH_TOKEN` env var > `.env` file value
   3. No hardcoded default token exists anywhere in the source code
   4. `go run ./cmd/mxlrcsvc-go` launches the tool successfully
-**Plans**: TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 03-01-PLAN.md — Create cmd/mxlrcsvc-go/main.go with godotenv, token precedence chain, delete root main.go
 
 ### Phase 4: Build & Verification
 **Goal**: All build tooling produces the correct binary name from the correct paths, dependencies are current, and all three input modes work identically to the original
