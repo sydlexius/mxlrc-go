@@ -14,7 +14,7 @@ Requirements for M0. Each maps to roadmap phases.
 
 ### Project Layout
 
-- [ ] **LAYOUT-01**: Entry point lives at `cmd/mxlrcsvc-go/main.go` as a thin wrapper (parse args, construct deps, call App.Run)
+- [x] **LAYOUT-01**: Entry point lives at `cmd/mxlrcsvc-go/main.go` as a thin wrapper (parse args, construct deps, call App.Run)
 - [x] **LAYOUT-02**: Internal packages created: `internal/models`, `internal/musixmatch`, `internal/lyrics`, `internal/scanner`, `internal/app`
 - [x] **LAYOUT-03**: All types and methods exported from internal packages (uppercase names)
 - [x] **LAYOUT-04**: Constructor functions (`NewClient`, `NewWriter`, etc.) for each internal package
@@ -30,8 +30,8 @@ Requirements for M0. Each maps to roadmap phases.
 ### API & Config
 
 - [x] **API-01**: `Fetcher` interface defined for Musixmatch client (`FindLyrics(Track) (Song, error)`)
-- [ ] **API-02**: Musixmatch token loaded with precedence: CLI flag > environment variable (`MUSIXMATCH_TOKEN`) > `.env` file
-- [ ] **API-03**: Hardcoded default token removed from source code
+- [x] **API-02**: Musixmatch token loaded with precedence: CLI flag > environment variable (`MUSIXMATCH_TOKEN`) > `.env` file
+- [x] **API-03**: Hardcoded default token removed from source code
 - [x] **API-04**: `writeLRC` returns `error` instead of `bool`
 - [x] **API-05**: All `log.Fatal` calls in library code converted to error returns
 
@@ -43,7 +43,7 @@ Requirements for M0. Each maps to roadmap phases.
 - [ ] **BUILD-04**: README updated for new module path and binary name
 - [ ] **BUILD-05**: All three input modes (CLI pairs, text file, directory scan) work identically after restructuring
 - [ ] **BUILD-06**: Dependencies upgraded: go-arg to v1.6.1, fastjson to v1.6.10, x/text to latest, dhowden/tag to latest
-- [ ] **BUILD-07**: godotenv v1.5.1 added for .env file loading
+- [x] **BUILD-07**: godotenv v1.5.1 added for .env file loading
 - [ ] **BUILD-08**: go.mod minimum Go version bumped to 1.24
 
 ## v2 Requirements
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | MOD-01 | Phase 1 | Complete |
 | MOD-02 | Phase 1 | Complete |
-| LAYOUT-01 | Phase 3 | Pending |
+| LAYOUT-01 | Phase 3 | Complete |
 | LAYOUT-02 | Phase 1 | Complete |
 | LAYOUT-03 | Phase 1 | Complete |
 | LAYOUT-04 | Phase 1 | Complete |
@@ -110,8 +110,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STATE-02 | Phase 2 | Complete |
 | STATE-03 | Phase 2 | Complete |
 | API-01 | Phase 1 | Complete |
-| API-02 | Phase 3 | Pending |
-| API-03 | Phase 3 | Pending |
+| API-02 | Phase 3 | Complete |
+| API-03 | Phase 3 | Complete |
 | API-04 | Phase 1 | Complete |
 | API-05 | Phase 1 | Complete |
 | BUILD-01 | Phase 4 | Pending |
@@ -120,7 +120,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUILD-04 | Phase 4 | Pending |
 | BUILD-05 | Phase 4 | Pending |
 | BUILD-06 | Phase 4 | Pending |
-| BUILD-07 | Phase 3 | Pending |
+| BUILD-07 | Phase 3 | Complete |
 | BUILD-08 | Phase 4 | Pending |
 
 **Coverage:**

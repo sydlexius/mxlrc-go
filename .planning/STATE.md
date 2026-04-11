@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6.1
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-04-10T23:58:12.217Z"
-last_activity: 2026-04-10
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-04-11T00:07:53.713Z"
+last_activity: 2026-04-11
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 3
+  total_plans: 5
+  completed_plans: 5
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 Phase: 1 of 4 (Package Extraction)
 Plan: 0 of 0 in current phase
 Status: Phase complete — ready for verification
-Last activity: 2026-04-10
+Last activity: 2026-04-11
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 2min | 3 tasks | 5 files |
 | Phase 01 P03 | 2min | 2 tasks | 7 files |
 | Phase 02 P01 | 1min | 2 tasks | 2 files |
+| Phase 03 P01 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Fetcher/Writer interfaces in implementing packages, all internal/ uses slog and error returns
 - [Phase 01]: main.go rewired as thin orchestrator, old flat files deleted, all tests pass
 - [Phase 02]: App struct owns all state with Run(ctx) method, handleFailed returns error, timer uses ticker+select for cancellation
+- [Phase 03]: godotenv.Load() called before signal context so env vars available for all logic; /mxlrcsvc-go in gitignore (leading slash) prevents matching cmd/ directory
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T23:58:12.215Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-04-11T00:07:53.711Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None

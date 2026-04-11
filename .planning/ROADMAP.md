@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Package Extraction** - Rename module, create all internal packages, export types, introduce interfaces
 - [ ] **Phase 2: State Elimination** - Create App struct, eliminate global variables, wire context-based signal handling
-- [ ] **Phase 3: Entry Point & Token** - Create thin cmd/ entry point, externalize API token with precedence chain
+- [x] **Phase 3: Entry Point & Token** - Create thin cmd/ entry point, externalize API token with precedence chain (completed 2026-04-11)
 - [ ] **Phase 4: Build & Verification** - Update Makefile/CI/GoReleaser/README, upgrade dependencies, verify behavior preservation
 
 ## Phase Details
@@ -58,10 +58,10 @@ Plans:
   2. Token is loaded with correct precedence: CLI `--token` flag > `MUSIXMATCH_TOKEN` env var > `.env` file value
   3. No hardcoded default token exists anywhere in the source code
   4. `go run ./cmd/mxlrcsvc-go` launches the tool successfully
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 03-01-PLAN.md — Create cmd/mxlrcsvc-go/main.go with godotenv, token precedence chain, delete root main.go
+- [x] 03-01-PLAN.md — Create cmd/mxlrcsvc-go/main.go with godotenv, token precedence chain, delete root main.go
 
 ### Phase 4: Build & Verification
 **Goal**: All build tooling produces the correct binary name from the correct paths, dependencies are current, and all three input modes work identically to the original
@@ -84,5 +84,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Package Extraction | 0/3 | Planned | - |
 | 2. State Elimination | 0/0 | Not started | - |
-| 3. Entry Point & Token | 0/0 | Not started | - |
+| 3. Entry Point & Token | 1/1 | Complete   | 2026-04-11 |
 | 4. Build & Verification | 0/0 | Not started | - |
