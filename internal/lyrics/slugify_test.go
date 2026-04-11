@@ -1,4 +1,4 @@
-package main
+package lyrics
 
 import (
 	"fmt"
@@ -17,11 +17,9 @@ func TestSlugify(t *testing.T) {
 
 	for i, tc := range tests {
 		t.Run(fmt.Sprintf("slugify=%d", i), func(t *testing.T) {
-			got := slugify(tc.input)
+			got := Slugify(tc.input)
 			if got != tc.want {
 				t.Fatalf("got %v; want %v", got, tc.want)
-			} else {
-				t.Logf("success")
 			}
 		})
 	}

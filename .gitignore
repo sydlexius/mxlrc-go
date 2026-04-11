@@ -5,6 +5,7 @@
 *.so
 *.dylib
 mxlrc-go
+/mxlrcsvc-go
 
 # Test binary, built with `go test -c`
 *.test
@@ -22,8 +23,16 @@ dist/
 # Failed lyrics fetch logs
 *_failed.txt
 
+# Local token config
+.env
+
 # Superpowers plans (local-only)
 docs/superpowers/
 
 # Serena MCP
 .serena/
+
+# AI assistant config (local only — except shared project commands)
+.claude/
+.opencode/*
+!.opencode/command

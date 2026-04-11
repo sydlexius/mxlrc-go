@@ -1,0 +1,9 @@
+[extend]
+# Extend the default gitleaks config
+useDefault = true
+
+[allowlist]
+description = "Allowlist for planning docs and path references"
+paths = [
+  ".planning/",
+]

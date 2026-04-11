@@ -1,4 +1,4 @@
-package main
+package musixmatch
 
 import (
 	"context"
@@ -6,24 +6,36 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/sydlexius/mxlrcsvc-go/internal/models"
 	"github.com/valyala/fastjson"
 )
 
-const URL = "https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get"
+const apiURL = "https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get"
 
-type Musixmatch struct {
-	Token string
+// Client communicates with the Musixmatch desktop API.
+type Client struct {
+	Token      string
+	httpClient *http.Client
 }
 
-func (mx Musixmatch) findLyrics(track Track) (Song, error) {
-	song := Song{}
-	baseURL, err := url.Parse(URL)
+// NewClient creates a new Musixmatch API client.
+func NewClient(token string) *Client {
+	return &Client{
+		Token:      token,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// FindLyrics looks up lyrics for the given track from the Musixmatch API.
+func (c *Client) FindLyrics(ctx context.Context, track models.Track) (models.Song, error) {
+	song := models.Song{}
+	baseURL, err := url.Parse(apiURL)
 	if err != nil {
 		return song, fmt.Errorf("failed to parse API URL: %w", err)
 	}
@@ -32,7 +44,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 		"namespace":         {"lyrics_richsynched"},
 		"subtitle_format":   {"mxm"},
 		"app_id":            {"web-desktop-app-v1.0"},
-		"usertoken":         {mx.Token},
+		"usertoken":         {c.Token},
 		"q_album":           {track.AlbumName},
 		"q_artist":          {track.ArtistName},
 		"q_artists":         {track.ArtistName},
@@ -43,10 +55,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 	}
 	baseURL.RawQuery = params.Encode()
 
-	// log.Println(baseURL.String())
-
-	client := http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(context.Background(), "GET", baseURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL.String(), nil)
 	if err != nil {
 		return song, err
 	}
@@ -56,7 +65,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 		"cookie":    {"x-mxm-token-guid="},
 	}
 
-	res, err := client.Do(req)
+	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return song, err
 	}
@@ -119,7 +128,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 			return song, err
 		}
 	} else {
-		log.Println("no synced lyrics found")
+		slog.Info("no synced lyrics found")
 		if song.Track.HasLyrics == 1 {
 			if tlg.GetInt("body", "lyrics", "restricted") == 1 {
 				return song, errors.New("restricted lyrics")
@@ -132,7 +141,7 @@ func (mx Musixmatch) findLyrics(track Track) (Song, error) {
 				return song, err
 			}
 		} else if song.Track.Instrumental == 1 {
-			log.Println("song is instrumental")
+			slog.Info("song is instrumental")
 		} else {
 			return song, errors.New("no lyrics found")
 		}
