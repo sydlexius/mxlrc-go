@@ -54,7 +54,7 @@ func (w *LRCWriter) WriteLRC(song models.Song, filename string, outdir string) (
 		// content, swap the extension to .txt so the file type matches content.
 		if !writeTags {
 			fn = strings.TrimSuffix(filename, filepath.Ext(filename)) + ".txt"
-			slog.Info("synced lyrics unavailable, saving as unsynced .txt", "path", filepath.Join(outdir, fn))
+			slog.Info("save unsynced lyrics", "path", filepath.Join(outdir, fn))
 		} else {
 			fn = filename
 		}
