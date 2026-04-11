@@ -17,9 +17,9 @@ key_files:
 decisions:
   - "README Token Configuration section added as new section after How to get the Musixmatch Token, documenting all three supply methods with priority order"
 metrics:
-  duration: "~3min (Task 1 only; Task 2 awaiting human smoke test)"
-  completed: "2026-04-11 (pending checkpoint)"
-  tasks_completed: 1
+  duration: "~5min"
+  completed: "2026-04-11"
+  tasks_completed: 2
   files_modified: 1
 ---
 
@@ -41,16 +41,20 @@ README rewritten to accurately reflect the restructured project identity:
 | Task | Name | Commit | Files |
 |------|------|--------|-------|
 | 1 | Rewrite README for new module identity | 0f46d6d | README.md |
-| 2 | Smoke test (checkpoint) | awaiting human | — |
+| 2 | Smoke test — human verification | approved | — |
 
-## Pre-Checkpoint Automated Verification
+## Smoke Test Results (Human-Verified)
+
+Human approved the checkpoint. The following were confirmed:
 
 ```
-make build → produces ./mxlrcsvc-go binary ✓
-./mxlrcsvc-go --help → shows "mxlrcsvc-go" in usage ✓
-./mxlrcsvc-go "adele,hello" → clean error: "no API token provided: use --token flag, MUSIXMATCH_TOKEN env var, or .env file" ✓
-go test ./... → all pass (internal/lyrics: ok) ✓
+./mxlrcsvc-go --help → correct usage line with mxlrcsvc-go binary name ✓
+./mxlrcsvc-go "adele,hello" → clean structured error (no token), no panic ✓
+go test ./... → all pass ✓
+make build → produces ./mxlrcsvc-go ✓
 ```
+
+**Phase 4 complete — M0 milestone (v1.6.1) achieved.**
 
 ## Deviations from Plan
 
@@ -72,3 +76,5 @@ T-04-03-01 (README token docs) — mitigated. README explains token is required 
 - Commit 0f46d6d exists in git log ✓
 - Binary ./mxlrcsvc-go built successfully ✓
 - No-token error path returns structured error message ✓
+- Smoke test approved by human ✓
+- Phase 4 complete ✓

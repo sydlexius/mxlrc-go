@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6.1
 milestone_name: milestone
 status: verifying
-stopped_at: "Checkpoint: 04-03-PLAN.md Task 2 smoke test (human-verify)"
-last_updated: "2026-04-11T00:25:39.245Z"
+stopped_at: Completed 04-03-PLAN.md — Phase 4 build-verification complete
+last_updated: "2026-04-11T00:28:13.821Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 4
@@ -91,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-11T00:25:39.241Z
-Stopped at: Checkpoint: 04-03-PLAN.md Task 2 smoke test (human-verify)
+Last session: 2026-04-11T00:28:13.818Z
+Stopped at: Completed 04-03-PLAN.md — Phase 4 build-verification complete
 Resume file: None
