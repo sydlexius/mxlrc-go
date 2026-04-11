@@ -23,6 +23,9 @@ dist/
 # Failed lyrics fetch logs
 *_failed.txt
 
+# Local token config
+.env
+
 # Superpowers plans (local-only)
 docs/superpowers/
 
