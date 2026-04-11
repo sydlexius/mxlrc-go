@@ -32,6 +32,7 @@ docs/superpowers/
 # Serena MCP
 .serena/
 
-# AI assistant config (local only)
+# AI assistant config (local only — except shared project commands)
 .claude/
-.opencode/
+.opencode/*
+!.opencode/command
