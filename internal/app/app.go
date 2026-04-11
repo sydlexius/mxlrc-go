@@ -109,7 +109,7 @@ func (a *App) handleFailed() error {
 		for !a.inputs.Empty() {
 			item, err := a.inputs.Pop()
 			if err != nil {
-				break
+				return fmt.Errorf("draining inputs queue: %w", err)
 			}
 			a.failed.Push(item)
 		}

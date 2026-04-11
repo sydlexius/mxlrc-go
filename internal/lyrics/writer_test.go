@@ -3,6 +3,7 @@ package lyrics
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sydlexius/mxlrcsvc-go/internal/models"
@@ -28,9 +29,9 @@ func TestWriteLRC_NothingToSave(t *testing.T) {
 	}
 
 	// No file should have been created on disk
-	entries, readErr := os.ReadDir(tmpDir)
-	if readErr != nil {
-		t.Fatalf("reading tmpDir: %v", readErr)
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		t.Fatalf("reading tmpDir: %v", err)
 	}
 	if len(entries) != 0 {
 		t.Fatalf("expected no files in tmpDir, found %d: %v", len(entries), entries)
@@ -58,16 +59,16 @@ func TestWriteLRC_Instrumental(t *testing.T) {
 
 	fn := Slugify("Test Artist - Instrumental Track") + ".lrc"
 	fp := filepath.Join(tmpDir, fn)
-	data, readErr := os.ReadFile(fp) //nolint:gosec // test path constructed from known test data
-	if readErr != nil {
-		t.Fatalf("expected file %s to exist: %v", fp, readErr)
+	data, err := os.ReadFile(fp) //nolint:gosec // test path constructed from known test data
+	if err != nil {
+		t.Fatalf("expected file %s to exist: %v", fp, err)
 	}
 	content := string(data)
 	if len(content) == 0 {
 		t.Fatal("expected non-empty file content for instrumental")
 	}
 	const want = "[00:00.00]\u266a Instrumental \u266a"
-	if !contains(content, want) {
+	if !strings.Contains(content, want) {
 		t.Fatalf("expected content to contain %q, got: %q", want, content)
 	}
 }
@@ -92,21 +93,7 @@ func TestWriteLRC_Unsynced(t *testing.T) {
 
 	fn := Slugify("Test Artist - Lyric Track") + ".lrc"
 	fp := filepath.Join(tmpDir, fn)
-	if _, statErr := os.Stat(fp); statErr != nil {
-		t.Fatalf("expected file %s to exist: %v", fp, statErr)
+	if _, err := os.Stat(fp); err != nil {
+		t.Fatalf("expected file %s to exist: %v", fp, err)
 	}
-}
-
-// contains is a simple substring check to avoid importing strings in tests.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && findSubstr(s, substr))
-}
-
-func findSubstr(s, substr string) bool {
-	for i := range len(s) - len(substr) + 1 {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
