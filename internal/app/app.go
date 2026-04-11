@@ -54,14 +54,13 @@ func (a *App) Run(ctx context.Context) error {
 		slog.Info("searching song", "artist", cur.Track.ArtistName, "track", cur.Track.TrackName)
 		song, err := a.fetcher.FindLyrics(ctx, cur.Track)
 		if err == nil {
-			slog.Info("formatting lyrics")
-			writeErr := a.writer.WriteLRC(song, cur.Filename, cur.Outdir)
 			cur, err = a.inputs.Pop()
 			if err != nil {
 				slog.Error("unexpected empty queue on pop", "error", err)
 				break
 			}
-			if writeErr != nil {
+			slog.Info("formatting lyrics")
+			if writeErr := a.writer.WriteLRC(song, cur.Filename, cur.Outdir); writeErr != nil {
 				slog.Error("failed to save lyrics", "error", writeErr)
 				a.failed.Push(cur)
 			}
@@ -107,7 +106,13 @@ func (a *App) timer(ctx context.Context) {
 func (a *App) handleFailed() error {
 	fmt.Printf("\n")
 	if !a.inputs.Empty() {
-		a.failed.Queue = append(a.failed.Queue, a.inputs.Queue...)
+		for !a.inputs.Empty() {
+			item, err := a.inputs.Pop()
+			if err != nil {
+				break
+			}
+			a.failed.Push(item)
+		}
 	}
 	slog.Info("fetch complete", "success", a.total-a.failed.Len(), "total", a.total)
 	if a.failed.Empty() {
