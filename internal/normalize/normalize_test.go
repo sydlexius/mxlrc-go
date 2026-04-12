@@ -19,7 +19,8 @@ func TestNormalizeKey(t *testing.T) {
 		{name: "already lowercase", input: "beatles", want: "beatles"},
 		{name: "uppercase", input: "THE BEATLES", want: "the beatles"},
 		{name: "accented composed", input: "café", want: "cafe"},
-		{name: "japanese ascii-like", input: "ｈｅｌｌｏ", want: "hello"}, // NFKD normalizes fullwidth
+		{name: "japanese ascii-like", input: "ｈｅｌｌｏ", want: "hello"},        // NFKD normalizes fullwidth
+		{name: "invalid utf-8 replaced", input: "hell\x80o", want: "hello"}, // invalid byte stripped
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

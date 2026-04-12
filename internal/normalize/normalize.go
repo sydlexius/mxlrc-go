@@ -11,9 +11,15 @@ import (
 
 // NormalizeKey converts s to a canonical lowercase cache key:
 // NFKD decomposition, strip combining marks (Unicode category Mn), NFC, lowercase, trim spaces.
+// Invalid UTF-8 sequences are replaced with empty string before transformation;
+// if the transform still fails, the sanitized input is used as a best-effort fallback.
 func NormalizeKey(s string) string {
+	sanitized := strings.ToValidUTF8(s, "")
 	t := transform.Chain(norm.NFKD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-	result, _, _ := transform.String(t, s)
+	result, _, err := transform.String(t, sanitized)
+	if err != nil {
+		result = sanitized
+	}
 	return strings.ToLower(strings.TrimSpace(result))
 }
 
