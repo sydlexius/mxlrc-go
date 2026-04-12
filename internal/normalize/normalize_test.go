@@ -52,7 +52,7 @@ func TestMatchConfidence(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.wantEq != nil && (tc.wantGt > 0 || tc.wantLt > 0) {
+			if tc.wantEq != nil && (tc.wantGt != 0 || tc.wantLt != 0) {
 				t.Fatalf("invalid test case %q: wantEq cannot be combined with wantGt/wantLt", tc.name)
 			}
 			got := normalize.MatchConfidence(tc.a, tc.b)
