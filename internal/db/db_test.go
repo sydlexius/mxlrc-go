@@ -75,6 +75,35 @@ func TestOpen_ForeignKeysEnabled(t *testing.T) {
 	}
 }
 
+// TestOpen_BusyTimeoutAndSynchronous verifies the remaining two pragmas set by
+// Open: busy_timeout=5000ms and synchronous=NORMAL (1).
+func TestOpen_BusyTimeoutAndSynchronous(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "pragmas.db")
+
+	sqlDB, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer sqlDB.Close() //nolint:errcheck
+
+	var busy int
+	if err := sqlDB.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busy); err != nil {
+		t.Fatalf("query busy_timeout: %v", err)
+	}
+	if busy != 5000 {
+		t.Errorf("busy_timeout = %d; want 5000", busy)
+	}
+
+	var sync int
+	if err := sqlDB.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&sync); err != nil {
+		t.Fatalf("query synchronous: %v", err)
+	}
+	if sync != 1 {
+		t.Errorf("synchronous = %d; want 1 (NORMAL)", sync)
+	}
+}
+
 // TestOpen_EmptyPathReturnsError verifies that an empty path is rejected.
 func TestOpen_EmptyPathReturnsError(t *testing.T) {
 	ctx := context.Background()

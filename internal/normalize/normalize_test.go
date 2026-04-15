@@ -32,27 +32,27 @@ func TestNormalizeKey(t *testing.T) {
 	}
 }
 
-func eqF(f float64) *float64 { return &f }
+func fptr(f float64) *float64 { return &f }
 
 func TestMatchConfidence(t *testing.T) {
 	tests := []struct {
 		name   string
 		a, b   string
-		wantGt float64  // got must be > wantGt (use 0 to skip)
-		wantLt float64  // got must be < wantLt (use 0 to skip)
+		wantGt *float64 // got must be > *wantGt; nil to skip
+		wantLt *float64 // got must be < *wantLt; nil to skip
 		wantEq *float64 // exact expected value; nil to skip
 	}{
-		{name: "identical", a: "hello", b: "hello", wantEq: eqF(1.0)},
-		{name: "both empty", a: "", b: "", wantEq: eqF(1.0)},
-		{name: "one empty", a: "hello", b: "", wantEq: eqF(0.0)},
-		{name: "near match transposition", a: "hello", b: "helol", wantGt: 0.9, wantLt: 1.0},
-		{name: "completely different", a: "abc", b: "xyz", wantLt: 0.5},
-		{name: "case insensitive", a: "Hello", b: "hello", wantEq: eqF(1.0)},
-		{name: "accent insensitive", a: "Héllo", b: "hello", wantEq: eqF(1.0)},
+		{name: "identical", a: "hello", b: "hello", wantEq: fptr(1.0)},
+		{name: "both empty", a: "", b: "", wantEq: fptr(1.0)},
+		{name: "one empty", a: "hello", b: "", wantEq: fptr(0.0)},
+		{name: "near match transposition", a: "hello", b: "helol", wantGt: fptr(0.9), wantLt: fptr(1.0)},
+		{name: "completely different", a: "abc", b: "xyz", wantLt: fptr(0.5)},
+		{name: "case insensitive", a: "Hello", b: "hello", wantEq: fptr(1.0)},
+		{name: "accent insensitive", a: "Héllo", b: "hello", wantEq: fptr(1.0)},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.wantEq != nil && (tc.wantGt != 0 || tc.wantLt != 0) {
+			if tc.wantEq != nil && (tc.wantGt != nil || tc.wantLt != nil) {
 				t.Fatalf("invalid test case %q: wantEq cannot be combined with wantGt/wantLt", tc.name)
 			}
 			got := normalize.MatchConfidence(tc.a, tc.b)
@@ -62,11 +62,11 @@ func TestMatchConfidence(t *testing.T) {
 				}
 				return
 			}
-			if tc.wantGt > 0 && got <= tc.wantGt {
-				t.Errorf("MatchConfidence(%q, %q) = %f, want > %f", tc.a, tc.b, got, tc.wantGt)
+			if tc.wantGt != nil && got <= *tc.wantGt {
+				t.Errorf("MatchConfidence(%q, %q) = %f, want > %f", tc.a, tc.b, got, *tc.wantGt)
 			}
-			if tc.wantLt > 0 && got >= tc.wantLt {
-				t.Errorf("MatchConfidence(%q, %q) = %f, want < %f", tc.a, tc.b, got, tc.wantLt)
+			if tc.wantLt != nil && got >= *tc.wantLt {
+				t.Errorf("MatchConfidence(%q, %q) = %f, want < %f", tc.a, tc.b, got, *tc.wantLt)
 			}
 		})
 	}

@@ -99,7 +99,7 @@ func applyEnvOverrides(cfg *Config) {
 	if v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 0 {
-			slog.Warn("env var is invalid; using current value", "var", cooldownVar, "value", v, "current", cfg.API.Cooldown) //nolint:gosec // G706: env var value echoed to structured log field; no format-string injection risk
+			slog.Warn("env var is invalid; using current value", "var", cooldownVar, "value", v, "current", cfg.API.Cooldown) //nolint:gosec // G706: tainted env var passed as a structured slog field value (not a format string); no log-injection vector since slog escapes values
 		} else {
 			cfg.API.Cooldown = n
 		}
