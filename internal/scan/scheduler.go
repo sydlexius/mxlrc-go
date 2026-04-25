@@ -85,6 +85,9 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		ctx, cancel = context.WithTimeout(ctx, s.MaxRuntime)
 		defer cancel()
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	if err := s.RunOnce(ctx); err != nil {
 		return err

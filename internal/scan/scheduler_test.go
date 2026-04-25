@@ -127,8 +127,8 @@ func TestScheduler_RunReturnsContextErrorOnCancellation(t *testing.T) {
 	if err := s.Run(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Run error = %v; want context.Canceled", err)
 	}
-	if store.calls != 1 {
-		t.Fatalf("Upsert calls = %d; want 1", store.calls)
+	if store.calls != 0 {
+		t.Fatalf("Upsert calls = %d; want 0", store.calls)
 	}
 }
 
