@@ -17,7 +17,7 @@ func TestOpen_CreatesDatabaseAndAppliesMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	defer func() { _ = sqlDB.Close() }()
 
 	// Verify expected tables were created by the migration.
 	tables := []string{"libraries", "scan_results", "lyrics_cache", "work_queue", "api_keys"}
@@ -44,7 +44,7 @@ func TestOpen_WALModeEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	defer func() { _ = sqlDB.Close() }()
 
 	var mode string
 	if err := sqlDB.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&mode); err != nil {
@@ -64,7 +64,7 @@ func TestOpen_ForeignKeysEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	defer func() { _ = sqlDB.Close() }()
 
 	var enabled int
 	if err := sqlDB.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&enabled); err != nil {
@@ -85,7 +85,7 @@ func TestOpen_BusyTimeoutAndSynchronous(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	defer func() { _ = sqlDB.Close() }()
 
 	var busy int
 	if err := sqlDB.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busy); err != nil {
@@ -123,11 +123,11 @@ func TestOpen_IdempotentMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Open: %v", err)
 	}
-	db1.Close() //nolint:errcheck
+	_ = db1.Close()
 
 	db2, err := Open(ctx, path)
 	if err != nil {
 		t.Fatalf("second Open (idempotency check): %v", err)
 	}
-	db2.Close() //nolint:errcheck
+	_ = db2.Close()
 }
