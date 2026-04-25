@@ -21,7 +21,7 @@ type ResultStore interface {
 
 // LibraryScanner scans a library path.
 type LibraryScanner interface {
-	ScanLibrary(root string, opts scanner.ScanOptions) ([]models.ScanResult, error)
+	ScanLibrary(ctx context.Context, root string, opts scanner.ScanOptions) ([]models.ScanResult, error)
 }
 
 // OnCompleteFunc is called after a library scan has been persisted.
@@ -55,7 +55,7 @@ func (s *Scheduler) RunOnce(ctx context.Context) error {
 		return fmt.Errorf("scan: list libraries: %w", err)
 	}
 	for _, lib := range libs {
-		results, err := s.Scanner.ScanLibrary(lib.Path, s.Options)
+		results, err := s.Scanner.ScanLibrary(ctx, lib.Path, s.Options)
 		if err != nil {
 			return fmt.Errorf("scan: scan library %d: %w", lib.ID, err)
 		}
@@ -98,7 +98,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case <-ticker.C:
 			if err := s.RunOnce(ctx); err != nil {
 				return err

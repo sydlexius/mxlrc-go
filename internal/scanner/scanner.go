@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -84,18 +85,21 @@ func (sc *Scanner) GetSongText(textFn string, savePath string, songs *queue.Inpu
 }
 
 // ScanLibrary scans a root directory for audio files and returns structured results.
-func (sc *Scanner) ScanLibrary(root string, opts ScanOptions) ([]models.ScanResult, error) {
+func (sc *Scanner) ScanLibrary(ctx context.Context, root string, opts ScanOptions) ([]models.ScanResult, error) {
 	if opts.MaxDepth < 0 {
 		opts.MaxDepth = 0
 	}
 	var results []models.ScanResult
-	if err := sc.scanDir(root, opts, 0, &results); err != nil {
+	if err := sc.scanDir(ctx, root, opts, 0, &results); err != nil {
 		return nil, err
 	}
 	return results, nil
 }
 
-func (sc *Scanner) scanDir(dir string, opts ScanOptions, depth int, results *[]models.ScanResult) error {
+func (sc *Scanner) scanDir(ctx context.Context, dir string, opts ScanOptions, depth int, results *[]models.ScanResult) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	slog.Info("scanning directory", "path", dir)
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -111,9 +115,12 @@ func (sc *Scanner) scanDir(dir string, opts ScanOptions, depth int, results *[]m
 	})
 
 	for _, file := range files {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if file.IsDir() {
 			if depth < opts.MaxDepth {
-				if err := sc.scanDir(filepath.Join(dir, file.Name()), opts, depth+1, results); err != nil {
+				if err := sc.scanDir(ctx, filepath.Join(dir, file.Name()), opts, depth+1, results); err != nil {
 					return err
 				}
 			}
@@ -186,7 +193,7 @@ func (sc *Scanner) scanDir(dir string, opts ScanOptions, depth int, results *[]m
 // upgrade causes existing .txt files (previously saved as unsynced) to be re-queued
 // so that the tool can check whether synced lyrics are now available and promote them to .lrc.
 func (sc *Scanner) GetSongDir(dir string, songs *queue.InputsQueue, update bool, upgrade bool, limit int, depth int, bfs bool) error {
-	results, err := sc.ScanLibrary(dir, ScanOptions{
+	results, err := sc.ScanLibrary(context.Background(), dir, ScanOptions{
 		Update:   update,
 		Upgrade:  upgrade,
 		MaxDepth: limit - depth,

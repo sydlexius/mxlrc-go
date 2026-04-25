@@ -31,12 +31,18 @@ func New(db *sql.DB) *Repo {
 
 // Upsert stores scan results for a library, keyed by library_id and file_path.
 func (r *Repo) Upsert(ctx context.Context, libraryID int64, results []models.ScanResult) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("scan: begin upsert tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
 	for _, res := range results {
 		status := res.Status
 		if status == "" {
 			status = StatusPending
 		}
-		_, err := r.db.ExecContext(ctx,
+		_, err := tx.ExecContext(ctx,
 			`INSERT INTO scan_results (library_id, file_path, artist, title, status)
              VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(library_id, file_path) DO UPDATE SET
@@ -52,6 +58,9 @@ func (r *Repo) Upsert(ctx context.Context, libraryID int64, results []models.Sca
 		if err != nil {
 			return fmt.Errorf("scan: upsert %s: %w", res.FilePath, err)
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("scan: commit upsert tx: %w", err)
 	}
 	return nil
 }

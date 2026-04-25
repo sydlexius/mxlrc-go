@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/sydlexius/mxlrcsvc-go/internal/models"
 	"github.com/sydlexius/mxlrcsvc-go/internal/scan"
@@ -44,7 +45,7 @@ type fakeScanner struct {
 	err     error
 }
 
-func (f fakeScanner) ScanLibrary(string, scanner.ScanOptions) ([]models.ScanResult, error) {
+func (f fakeScanner) ScanLibrary(context.Context, string, scanner.ScanOptions) ([]models.ScanResult, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -104,6 +105,27 @@ func TestScheduler_RunWithNoIntervalRunsOnce(t *testing.T) {
 
 	if err := s.Run(ctx); err != nil {
 		t.Fatalf("Run: %v", err)
+	}
+	if store.calls != 1 {
+		t.Fatalf("Upsert calls = %d; want 1", store.calls)
+	}
+}
+
+func TestScheduler_RunReturnsContextErrorOnCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	store := &fakeResults{}
+	s := scan.Scheduler{
+		Libraries: fakeLibraries{libs: []models.Library{{ID: 7, Path: "/music", Name: "Music"}}},
+		Results:   store,
+		Scanner: fakeScanner{results: []models.ScanResult{{
+			FilePath: "/music/a.mp3",
+		}}},
+		Interval: time.Hour,
+	}
+
+	cancel()
+	if err := s.Run(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v; want context.Canceled", err)
 	}
 	if store.calls != 1 {
 		t.Fatalf("Upsert calls = %d; want 1", store.calls)

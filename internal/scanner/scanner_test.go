@@ -1,6 +1,8 @@
 package scanner
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -122,7 +124,7 @@ func TestScanLibrary_ReturnsStructuredResults(t *testing.T) {
 	writeAudioFile(t, dir, "track.mp3")
 
 	sc := NewScanner()
-	results, err := sc.ScanLibrary(dir, ScanOptions{MaxDepth: 100})
+	results, err := sc.ScanLibrary(context.Background(), dir, ScanOptions{MaxDepth: 100})
 	if err != nil {
 		t.Fatalf("ScanLibrary: %v", err)
 	}
@@ -156,11 +158,22 @@ func TestScanLibrary_RespectsMaxDepth(t *testing.T) {
 	writeAudioFile(t, nested, "track.mp3")
 
 	sc := NewScanner()
-	results, err := sc.ScanLibrary(root, ScanOptions{MaxDepth: 0})
+	results, err := sc.ScanLibrary(context.Background(), root, ScanOptions{MaxDepth: 0})
 	if err != nil {
 		t.Fatalf("ScanLibrary: %v", err)
 	}
 	if len(results) != 0 {
 		t.Fatalf("ScanLibrary returned %d results; want 0", len(results))
+	}
+}
+
+func TestScanLibrary_RespectsCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	sc := NewScanner()
+	_, err := sc.ScanLibrary(ctx, t.TempDir(), ScanOptions{MaxDepth: 100})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ScanLibrary error = %v; want context.Canceled", err)
 	}
 }
