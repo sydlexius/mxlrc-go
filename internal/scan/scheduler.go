@@ -54,23 +54,23 @@ func (s *Scheduler) RunOnce(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("scan: list libraries: %w", err)
 	}
-	for _, lib := range libs {
-		results, err := s.Scanner.ScanLibrary(ctx, lib.Path, s.Options)
+	for _, v := range libs {
+		results, err := s.Scanner.ScanLibrary(ctx, v.Path, s.Options)
 		if err != nil {
-			return fmt.Errorf("scan: scan library %d: %w", lib.ID, err)
+			return fmt.Errorf("scan: scan library %d: %w", v.ID, err)
 		}
 		for i := range results {
-			results[i].LibraryID = lib.ID
+			results[i].LibraryID = v.ID
 			if results[i].Status == "" {
 				results[i].Status = StatusPending
 			}
 		}
-		if err := s.Results.Upsert(ctx, lib.ID, results); err != nil {
-			return fmt.Errorf("scan: persist library %d: %w", lib.ID, err)
+		if err := s.Results.Upsert(ctx, v.ID, results); err != nil {
+			return fmt.Errorf("scan: persist library %d: %w", v.ID, err)
 		}
 		if s.OnScanComplete != nil {
-			if err := s.OnScanComplete(ctx, lib, results); err != nil {
-				return fmt.Errorf("scan: complete library %d: %w", lib.ID, err)
+			if err := s.OnScanComplete(ctx, v, results); err != nil {
+				return fmt.Errorf("scan: complete library %d: %w", v.ID, err)
 			}
 		}
 	}

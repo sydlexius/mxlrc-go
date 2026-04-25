@@ -143,9 +143,9 @@ func TestScheduler_RunOnceRequiresDependencies(t *testing.T) {
 		{name: "missing scanner", s: scan.Scheduler{Libraries: fakeLibraries{}, Results: &fakeResults{}}},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.s.RunOnce(ctx); err == nil {
+	for _, v := range tests {
+		t.Run(v.name, func(t *testing.T) {
+			if err := v.s.RunOnce(ctx); err == nil {
 				t.Fatal("RunOnce returned nil error; want dependency error")
 			}
 		})
@@ -209,11 +209,11 @@ func TestScheduler_RunOncePropagatesErrors(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			err := tc.s.RunOnce(ctx)
-			if !errors.Is(err, tc.want) {
-				t.Fatalf("RunOnce error = %v; want wrapping %v", err, tc.want)
+	for _, v := range tests {
+		t.Run(v.name, func(t *testing.T) {
+			err := v.s.RunOnce(ctx)
+			if !errors.Is(err, v.want) {
+				t.Fatalf("RunOnce error = %v; want wrapping %v", err, v.want)
 			}
 		})
 	}
