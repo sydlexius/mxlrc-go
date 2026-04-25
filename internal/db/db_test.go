@@ -17,7 +17,11 @@ func TestOpen_CreatesDatabaseAndAppliesMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
 
 	// Verify expected tables were created by the migration.
 	tables := []string{"libraries", "scan_results", "lyrics_cache", "work_queue", "api_keys"}
@@ -44,7 +48,11 @@ func TestOpen_WALModeEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
 
 	var mode string
 	if err := sqlDB.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&mode); err != nil {
@@ -64,7 +72,11 @@ func TestOpen_ForeignKeysEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer sqlDB.Close() //nolint:errcheck
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
 
 	var enabled int
 	if err := sqlDB.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&enabled); err != nil {
@@ -72,6 +84,39 @@ func TestOpen_ForeignKeysEnabled(t *testing.T) {
 	}
 	if enabled != 1 {
 		t.Errorf("foreign_keys = %d; want 1 (ON)", enabled)
+	}
+}
+
+// TestOpen_BusyTimeoutAndSynchronous verifies the remaining two pragmas set by
+// Open: busy_timeout=5000ms and synchronous=NORMAL (1).
+func TestOpen_BusyTimeoutAndSynchronous(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "pragmas.db")
+
+	sqlDB, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+
+	var busy int
+	if err := sqlDB.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busy); err != nil {
+		t.Fatalf("query busy_timeout: %v", err)
+	}
+	if busy != 5000 {
+		t.Errorf("busy_timeout = %d; want 5000", busy)
+	}
+
+	var sync int
+	if err := sqlDB.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&sync); err != nil {
+		t.Fatalf("query synchronous: %v", err)
+	}
+	if sync != 1 {
+		t.Errorf("synchronous = %d; want 1 (NORMAL)", sync)
 	}
 }
 
@@ -94,11 +139,15 @@ func TestOpen_IdempotentMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Open: %v", err)
 	}
-	db1.Close() //nolint:errcheck
+	if err := db1.Close(); err != nil {
+		t.Fatalf("close first db: %v", err)
+	}
 
 	db2, err := Open(ctx, path)
 	if err != nil {
 		t.Fatalf("second Open (idempotency check): %v", err)
 	}
-	db2.Close() //nolint:errcheck
+	if err := db2.Close(); err != nil {
+		t.Fatalf("close second db: %v", err)
+	}
 }
