@@ -111,6 +111,26 @@ func TestScheduler_RunWithNoIntervalRunsOnce(t *testing.T) {
 	}
 }
 
+func TestScheduler_RunOnceReturnsContextErrorOnCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	store := &fakeResults{}
+	s := scan.Scheduler{
+		Libraries: fakeLibraries{libs: []models.Library{{ID: 7, Path: "/music", Name: "Music"}}},
+		Results:   store,
+		Scanner: fakeScanner{results: []models.ScanResult{{
+			FilePath: "/music/a.mp3",
+		}}},
+	}
+
+	cancel()
+	if err := s.RunOnce(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("RunOnce error = %v; want context.Canceled", err)
+	}
+	if store.calls != 0 {
+		t.Fatalf("Upsert calls = %d; want 0", store.calls)
+	}
+}
+
 func TestScheduler_RunReturnsContextErrorOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	store := &fakeResults{}

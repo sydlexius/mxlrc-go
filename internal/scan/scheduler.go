@@ -49,6 +49,9 @@ func (s *Scheduler) RunOnce(ctx context.Context) error {
 	if s.Scanner == nil {
 		return fmt.Errorf("scan: scheduler scanner dependency is nil")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	libs, err := s.Libraries.List(ctx)
 	if err != nil {
