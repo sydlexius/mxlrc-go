@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -36,19 +37,87 @@ func main() {
 	os.Exit(run())
 }
 
+type appRunner interface {
+	Run(ctx context.Context) error
+}
+
+type runOptions struct {
+	Args       []string
+	Out        io.Writer
+	Context    context.Context
+	LoadDotenv func() error
+	NewFetcher func(token string) musixmatch.Fetcher
+	NewWriter  func() lyrics.Writer
+	NewApp     func(fetcher musixmatch.Fetcher, writer lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner
+}
+
 // run executes the application and returns an exit code.
 // Using a helper function ensures deferred cleanup (e.g. sqlDB.Close) runs
 // before os.Exit is called, while still producing a non-zero exit on error.
 func run() int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return runWithOptions(runOptions{Context: ctx})
+}
+
+func runWithOptions(opts runOptions) int {
+	rawArgs := opts.Args
+	if rawArgs == nil {
+		rawArgs = os.Args[1:]
+	}
+	out := opts.Out
+	if out == nil {
+		out = os.Stdout
+	}
+	ctx := opts.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	loadDotenv := opts.LoadDotenv
+	if loadDotenv == nil {
+		loadDotenv = func() error { return godotenv.Load() }
+	}
+	newFetcher := opts.NewFetcher
+	if newFetcher == nil {
+		newFetcher = func(token string) musixmatch.Fetcher { return musixmatch.NewClient(token) }
+	}
+	newWriter := opts.NewWriter
+	if newWriter == nil {
+		newWriter = func() lyrics.Writer { return lyrics.NewLRCWriter() }
+	}
+	newApp := opts.NewApp
+	if newApp == nil {
+		newApp = func(fetcher musixmatch.Fetcher, writer lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner {
+			return app.NewApp(fetcher, writer, inputs, cooldown, mode)
+		}
+	}
+
 	var args Args
-	arg.MustParse(&args)
+	parser, err := arg.NewParser(arg.Config{Program: "mxlrcsvc-go", Out: out}, &args)
+	if err != nil {
+		_, _ = fmt.Fprintln(out, err)
+		return 2
+	}
+	if err := parser.Parse(rawArgs); err != nil {
+		if err == arg.ErrHelp {
+			if err := parser.WriteHelpForSubcommand(out); err != nil {
+				_, _ = fmt.Fprintln(out, err)
+				return 2
+			}
+			return 0
+		}
+		if usageErr := parser.WriteUsageForSubcommand(out); usageErr != nil {
+			_, _ = fmt.Fprintln(out, usageErr)
+			return 2
+		}
+		_, _ = fmt.Fprintln(out, err)
+		return 2
+	}
 
 	// Load .env file if present (does NOT overwrite existing env vars).
 	// Error is ignored -- .env file is optional.
-	_ = godotenv.Load()
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	_ = loadDotenv()
 
 	cfg, err := config.Load(args.ConfigPath)
 	if err != nil {
@@ -101,9 +170,9 @@ func run() int {
 		}
 	}
 
-	mx := musixmatch.NewClient(token)
-	w := lyrics.NewLRCWriter()
-	application := app.NewApp(mx, w, inputs, cooldown, mode)
+	mx := newFetcher(token)
+	w := newWriter()
+	application := newApp(mx, w, inputs, cooldown, mode)
 
 	if err := application.Run(ctx); err != nil {
 		slog.Error("application error", "error", err)
