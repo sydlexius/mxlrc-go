@@ -135,13 +135,6 @@ func runWithOptions(opts runOptions) int {
 		return 1
 	}
 
-	sqlDB, err := db.Open(ctx, cfg.DB.Path)
-	if err != nil {
-		slog.Error("failed to open database", "error", err)
-		return 1
-	}
-	defer sqlDB.Close() //nolint:errcheck // best-effort close on shutdown
-
 	// Cooldown: explicit CLI flag wins; otherwise use config (which has its own default).
 	cooldown := cfg.API.Cooldown
 	if args.Cooldown != nil {
@@ -169,6 +162,13 @@ func runWithOptions(opts runOptions) int {
 			return 1
 		}
 	}
+
+	sqlDB, err := db.Open(ctx, cfg.DB.Path)
+	if err != nil {
+		slog.Error("failed to open database", "error", err)
+		return 1
+	}
+	defer sqlDB.Close() //nolint:errcheck // best-effort close on shutdown
 
 	mx := newFetcher(token)
 	w := newWriter()

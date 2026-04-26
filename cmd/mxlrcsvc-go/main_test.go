@@ -83,9 +83,14 @@ func writeConfig(t *testing.T, token string, cooldown int, outdir string, dbPath
 
 func runStartup(t *testing.T, args []string, rec *runRecord) int {
 	t.Helper()
+	return runStartupWithDotenv(t, args, rec, func() error { return nil })
+}
+
+func runStartupWithDotenv(t *testing.T, args []string, rec *runRecord, loadDotenv func() error) int {
+	t.Helper()
 	return runWithOptions(runOptions{
 		args:       args,
-		loadDotenv: func() error { return nil },
+		loadDotenv: loadDotenv,
 		newFetcher: func(token string) musixmatch.Fetcher {
 			rec.token = token
 			return &fakeFetcher{rec: rec}
@@ -189,6 +194,46 @@ func TestRunWithOptions_CLIPrecedenceAndPairInput(t *testing.T) {
 	}
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Fatalf("stat db path: %v", err)
+	}
+}
+
+func TestRunWithOptions_DotenvTokenPrecedence(t *testing.T) {
+	isolateCLIEnv(t)
+	dir := t.TempDir()
+	cfg := writeConfig(t, "config-token", 1, filepath.Join(dir, "out"), filepath.Join(dir, "state", "test.db"))
+	loadDotenv := func() error {
+		if os.Getenv("MUSIXMATCH_TOKEN") == "" {
+			t.Setenv("MUSIXMATCH_TOKEN", "dotenv-token")
+		}
+		return nil
+	}
+
+	rec := &runRecord{}
+	code := runStartupWithDotenv(t, []string{"--config", cfg, "Artist,Title"}, rec, loadDotenv)
+	if code != 0 {
+		t.Fatalf("run exit code = %d; want 0", code)
+	}
+	if rec.token != "dotenv-token" {
+		t.Fatalf("token = %q; want dotenv token", rec.token)
+	}
+
+	t.Setenv("MUSIXMATCH_TOKEN", "env-token")
+	rec = &runRecord{}
+	code = runStartupWithDotenv(t, []string{"--config", cfg, "Artist,Title"}, rec, loadDotenv)
+	if code != 0 {
+		t.Fatalf("run exit code = %d; want 0", code)
+	}
+	if rec.token != "env-token" {
+		t.Fatalf("token = %q; want env token", rec.token)
+	}
+
+	rec = &runRecord{}
+	code = runStartupWithDotenv(t, []string{"--config", cfg, "--token", "cli-token", "Artist,Title"}, rec, loadDotenv)
+	if code != 0 {
+		t.Fatalf("run exit code = %d; want 0", code)
+	}
+	if rec.token != "cli-token" {
+		t.Fatalf("token = %q; want CLI token", rec.token)
 	}
 }
 
