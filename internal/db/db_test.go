@@ -151,3 +151,66 @@ func TestOpen_IdempotentMigrations(t *testing.T) {
 		t.Fatalf("close second db: %v", err)
 	}
 }
+
+// TestOpen_ScanResultsUniqueIndex verifies that the scan result upsert key
+// migration has been applied.
+func TestOpen_ScanResultsUniqueIndex(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "scan-index.db")
+
+	sqlDB, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+
+	var count int
+	row := sqlDB.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_scan_results_library_file'")
+	if err := row.Scan(&count); err != nil {
+		t.Fatalf("query scan result index: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("scan result unique index count = %d; want 1", count)
+	}
+
+	var unique int
+	row = sqlDB.QueryRowContext(ctx,
+		"SELECT [unique] FROM pragma_index_list('scan_results') WHERE name = 'idx_scan_results_library_file'")
+	if err := row.Scan(&unique); err != nil {
+		t.Fatalf("query scan result index uniqueness: %v", err)
+	}
+	if unique != 1 {
+		t.Fatalf("scan result index unique = %d; want 1", unique)
+	}
+
+	rows, err := sqlDB.QueryContext(ctx,
+		"SELECT name FROM pragma_index_info('idx_scan_results_library_file') ORDER BY seqno")
+	if err != nil {
+		t.Fatalf("query scan result index columns: %v", err)
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			t.Errorf("close index columns rows: %v", err)
+		}
+	}()
+
+	var cols []string
+	for rows.Next() {
+		var col string
+		if err := rows.Scan(&col); err != nil {
+			t.Fatalf("scan result index column: %v", err)
+		}
+		cols = append(cols, col)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate scan result index columns: %v", err)
+	}
+	if len(cols) != 2 || cols[0] != "library_id" || cols[1] != "file_path" {
+		t.Fatalf("scan result index columns = %v; want [library_id file_path]", cols)
+	}
+}

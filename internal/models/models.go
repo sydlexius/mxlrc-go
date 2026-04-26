@@ -48,3 +48,25 @@ type Inputs struct {
 	Outdir   string
 	Filename string
 }
+
+// Library represents a configured music library root.
+type Library struct {
+	ID        int64  `json:"id,omitempty"`
+	Path      string `json:"path,omitempty"`
+	Name      string `json:"name,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+	UpdatedAt string `json:"updated_at,omitempty"`
+}
+
+// ScanResult represents an audio file discovered during a library scan.
+type ScanResult struct {
+	ID        int64  `json:"id,omitempty"`
+	LibraryID int64  `json:"library_id,omitempty"`
+	FilePath  string `json:"file_path,omitempty"`
+	Track     Track  `json:"track,omitempty"`
+	Outdir    string `json:"outdir,omitempty"`
+	Filename  string `json:"filename,omitempty"`
+	Status    string `json:"status,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+	UpdatedAt string `json:"updated_at,omitempty"`
+}
