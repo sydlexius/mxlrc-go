@@ -42,13 +42,13 @@ type appRunner interface {
 }
 
 type runOptions struct {
-	Args       []string
-	Out        io.Writer
-	Context    context.Context
-	LoadDotenv func() error
-	NewFetcher func(token string) musixmatch.Fetcher
-	NewWriter  func() lyrics.Writer
-	NewApp     func(fetcher musixmatch.Fetcher, writer lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner
+	args       []string
+	out        io.Writer
+	ctx        context.Context
+	loadDotenv func() error
+	newFetcher func(token string) musixmatch.Fetcher
+	newWriter  func() lyrics.Writer
+	newApp     func(fetcher musixmatch.Fetcher, writer lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner
 }
 
 // run executes the application and returns an exit code.
@@ -58,35 +58,35 @@ func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	return runWithOptions(runOptions{Context: ctx})
+	return runWithOptions(runOptions{ctx: ctx})
 }
 
 func runWithOptions(opts runOptions) int {
-	rawArgs := opts.Args
+	rawArgs := opts.args
 	if rawArgs == nil {
 		rawArgs = os.Args[1:]
 	}
-	out := opts.Out
+	out := opts.out
 	if out == nil {
 		out = os.Stdout
 	}
-	ctx := opts.Context
+	ctx := opts.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	loadDotenv := opts.LoadDotenv
+	loadDotenv := opts.loadDotenv
 	if loadDotenv == nil {
 		loadDotenv = func() error { return godotenv.Load() }
 	}
-	newFetcher := opts.NewFetcher
+	newFetcher := opts.newFetcher
 	if newFetcher == nil {
 		newFetcher = func(token string) musixmatch.Fetcher { return musixmatch.NewClient(token) }
 	}
-	newWriter := opts.NewWriter
+	newWriter := opts.newWriter
 	if newWriter == nil {
 		newWriter = func() lyrics.Writer { return lyrics.NewLRCWriter() }
 	}
-	newApp := opts.NewApp
+	newApp := opts.newApp
 	if newApp == nil {
 		newApp = func(fetcher musixmatch.Fetcher, writer lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner {
 			return app.NewApp(fetcher, writer, inputs, cooldown, mode)
@@ -125,13 +125,6 @@ func runWithOptions(opts runOptions) int {
 		return 1
 	}
 
-	sqlDB, err := db.Open(ctx, cfg.DB.Path)
-	if err != nil {
-		slog.Error("failed to open database", "error", err)
-		return 1
-	}
-	defer sqlDB.Close() //nolint:errcheck // best-effort close on shutdown
-
 	// Token precedence: CLI flag > env vars (handled in config.Load) > config file.
 	token := args.Token
 	if token == "" {
@@ -141,6 +134,13 @@ func runWithOptions(opts runOptions) int {
 		slog.Error("no API token provided: use --token flag, MUSIXMATCH_TOKEN env var, MXLRC_API_TOKEN env var, or config file")
 		return 1
 	}
+
+	sqlDB, err := db.Open(ctx, cfg.DB.Path)
+	if err != nil {
+		slog.Error("failed to open database", "error", err)
+		return 1
+	}
+	defer sqlDB.Close() //nolint:errcheck // best-effort close on shutdown
 
 	// Cooldown: explicit CLI flag wins; otherwise use config (which has its own default).
 	cooldown := cfg.API.Cooldown

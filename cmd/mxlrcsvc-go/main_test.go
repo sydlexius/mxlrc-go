@@ -84,16 +84,16 @@ func writeConfig(t *testing.T, token string, cooldown int, outdir string, dbPath
 func runStartup(t *testing.T, args []string, rec *runRecord) int {
 	t.Helper()
 	return runWithOptions(runOptions{
-		Args:       args,
-		LoadDotenv: func() error { return nil },
-		NewFetcher: func(token string) musixmatch.Fetcher {
+		args:       args,
+		loadDotenv: func() error { return nil },
+		newFetcher: func(token string) musixmatch.Fetcher {
 			rec.token = token
 			return &fakeFetcher{rec: rec}
 		},
-		NewWriter: func() lyrics.Writer {
+		newWriter: func() lyrics.Writer {
 			return fakeWriter{}
 		},
-		NewApp: func(_ musixmatch.Fetcher, _ lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner {
+		newApp: func(_ musixmatch.Fetcher, _ lyrics.Writer, inputs *queue.InputsQueue, cooldown int, mode string) appRunner {
 			rec.appCreated = true
 			rec.cooldown = cooldown
 			rec.mode = mode
@@ -118,15 +118,15 @@ func TestRunWithOptions_HelpDoesNotStartApplication(t *testing.T) {
 	rec := &runRecord{}
 
 	code := runWithOptions(runOptions{
-		Args:       []string{"--help"},
-		Out:        &out,
-		LoadDotenv: func() error { return nil },
-		NewFetcher: func(token string) musixmatch.Fetcher {
+		args:       []string{"--help"},
+		out:        &out,
+		loadDotenv: func() error { return nil },
+		newFetcher: func(token string) musixmatch.Fetcher {
 			rec.token = token
 			return &fakeFetcher{rec: rec}
 		},
-		NewWriter: func() lyrics.Writer { return fakeWriter{} },
-		NewApp: func(musixmatch.Fetcher, lyrics.Writer, *queue.InputsQueue, int, string) appRunner {
+		newWriter: func() lyrics.Writer { return fakeWriter{} },
+		newApp: func(musixmatch.Fetcher, lyrics.Writer, *queue.InputsQueue, int, string) appRunner {
 			rec.appCreated = true
 			return fakeRunner{rec: rec}
 		},
@@ -236,8 +236,8 @@ func TestRunWithOptions_MissingTokenFailsBeforeAppRun(t *testing.T) {
 	if rec.findCalls != 0 {
 		t.Fatalf("FindLyrics calls = %d; want 0", rec.findCalls)
 	}
-	if _, err := os.Stat(dbPath); err != nil {
-		t.Fatalf("stat db path: %v", err)
+	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
+		t.Fatalf("stat db path error = %v; want not exist", err)
 	}
 }
 
