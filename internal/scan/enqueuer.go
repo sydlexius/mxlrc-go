@@ -76,7 +76,14 @@ func (e *Enqueuer) EnqueuePending(ctx context.Context, libraryID int64) error {
 		if err := e.Results.SetStatus(ctx, []int64{res.ID}, StatusProcessing); err != nil {
 			return fmt.Errorf("scan: reserve result %d: %w", res.ID, err)
 		}
-		if _, err := e.Queue.Enqueue(ctx, scanInputs(res), e.Priority); err != nil {
+		inputs, err := scanInputs(res)
+		if err != nil {
+			if restoreErr := e.Results.SetStatus(ctx, []int64{res.ID}, StatusPending); restoreErr != nil {
+				return fmt.Errorf("scan: build inputs for result %d: %w; restore pending: %w", res.ID, err, restoreErr)
+			}
+			return fmt.Errorf("scan: build inputs for result %d: %w", res.ID, err)
+		}
+		if _, err := e.Queue.Enqueue(ctx, inputs, e.Priority); err != nil {
 			if restoreErr := e.Results.SetStatus(ctx, []int64{res.ID}, StatusPending); restoreErr != nil {
 				return fmt.Errorf("scan: enqueue result %d: %w; restore pending: %w", res.ID, err, restoreErr)
 			}
@@ -91,7 +98,7 @@ func (e *Enqueuer) OnScanComplete(ctx context.Context, lib models.Library, _ []m
 	return e.EnqueuePending(ctx, lib.ID)
 }
 
-func scanInputs(res models.ScanResult) models.Inputs {
+func scanInputs(res models.ScanResult) (models.Inputs, error) {
 	outdir := res.Outdir
 	if outdir == "" && res.FilePath != "" {
 		outdir = filepath.Dir(res.FilePath)
@@ -101,6 +108,9 @@ func scanInputs(res models.ScanResult) models.Inputs {
 		base := filepath.Base(res.FilePath)
 		filename = strings.TrimSuffix(base, filepath.Ext(base)) + ".lrc"
 	}
+	if outdir == "" && filename == "" && res.FilePath == "" {
+		return models.Inputs{}, fmt.Errorf("invalid scan result: missing file path and output destination")
+	}
 	return models.Inputs{
 		Track:    res.Track,
 		Outdir:   outdir,
@@ -109,5 +119,5 @@ func scanInputs(res models.ScanResult) models.Inputs {
 			Outdir:   outdir,
 			Filename: filename,
 		}},
-	}
+	}, nil
 }

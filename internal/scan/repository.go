@@ -92,24 +92,8 @@ func (r *Repo) ListByLibrary(ctx context.Context, libraryID int64) (results []mo
 		}
 	}()
 
-	for rows.Next() {
-		var res models.ScanResult
-		if err := rows.Scan(
-			&res.ID,
-			&res.LibraryID,
-			&res.FilePath,
-			&res.Track.ArtistName,
-			&res.Track.TrackName,
-			&res.Outdir,
-			&res.Filename,
-			&res.Status,
-			&res.CreatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan: list scan: %w", err)
-		}
-		results = append(results, res)
-	}
-	if err := rows.Err(); err != nil {
+	results, err = scanResultRows(rows)
+	if err != nil {
 		return nil, fmt.Errorf("scan: list rows: %w", err)
 	}
 	return results, nil
@@ -135,6 +119,15 @@ func (r *Repo) ListPendingByLibrary(ctx context.Context, libraryID int64) (resul
 		}
 	}()
 
+	results, err = scanResultRows(rows)
+	if err != nil {
+		return nil, fmt.Errorf("scan: list pending rows: %w", err)
+	}
+	return results, nil
+}
+
+func scanResultRows(rows *sql.Rows) ([]models.ScanResult, error) {
+	var results []models.ScanResult
 	for rows.Next() {
 		var res models.ScanResult
 		if err := rows.Scan(
@@ -148,12 +141,12 @@ func (r *Repo) ListPendingByLibrary(ctx context.Context, libraryID int64) (resul
 			&res.Status,
 			&res.CreatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan: list pending scan: %w", err)
+			return nil, err
 		}
 		results = append(results, res)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("scan: list pending rows: %w", err)
+		return nil, err
 	}
 	return results, nil
 }

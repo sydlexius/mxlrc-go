@@ -118,8 +118,9 @@ func TestEnqueuer_EnqueuePendingSkipsCacheHitsAndEnqueuesMisses(t *testing.T) {
 func TestEnqueuer_ReservesMissBeforeEnqueue(t *testing.T) {
 	ctx := context.Background()
 	store := &fakePendingStore{results: []models.ScanResult{{
-		ID:    3,
-		Track: models.Track{ArtistName: "Artist", TrackName: "Title"},
+		ID:       3,
+		FilePath: "/music/reserved.mp3",
+		Track:    models.Track{ArtistName: "Artist", TrackName: "Title"},
 	}}}
 	cache := fakeLyricsCache{hits: map[string]bool{}}
 	var reservedBeforeEnqueue bool
@@ -142,8 +143,9 @@ func TestEnqueuer_ReservesMissBeforeEnqueue(t *testing.T) {
 func TestEnqueuer_RestoresPendingWhenEnqueueFails(t *testing.T) {
 	ctx := context.Background()
 	store := &fakePendingStore{results: []models.ScanResult{{
-		ID:    4,
-		Track: models.Track{ArtistName: "Artist", TrackName: "Title"},
+		ID:       4,
+		FilePath: "/music/failure.mp3",
+		Track:    models.Track{ArtistName: "Artist", TrackName: "Title"},
 	}}}
 	cache := fakeLyricsCache{hits: map[string]bool{}}
 	queueErr := errors.New("queue failed")
@@ -153,6 +155,31 @@ func TestEnqueuer_RestoresPendingWhenEnqueueFails(t *testing.T) {
 	err := e.EnqueuePending(ctx, 7)
 	if !errors.Is(err, queueErr) {
 		t.Fatalf("EnqueuePending error = %v; want wrapping %v", err, queueErr)
+	}
+	if len(store.status) != 2 {
+		t.Fatalf("status calls = %+v; want reserve and restore", store.status)
+	}
+	if store.status[0].status != scan.StatusProcessing || store.status[1].status != scan.StatusPending {
+		t.Fatalf("status calls = %+v; want processing then pending", store.status)
+	}
+}
+
+func TestEnqueuer_RestoresPendingWhenScanResultDestinationInvalid(t *testing.T) {
+	ctx := context.Background()
+	store := &fakePendingStore{results: []models.ScanResult{{
+		ID:    5,
+		Track: models.Track{ArtistName: "Artist", TrackName: "Title"},
+	}}}
+	cache := fakeLyricsCache{hits: map[string]bool{}}
+	work := &fakeWorkQueue{}
+	e := scan.Enqueuer{Results: store, Cache: cache, Queue: work}
+
+	err := e.EnqueuePending(ctx, 7)
+	if err == nil {
+		t.Fatal("EnqueuePending returned nil error; want invalid destination error")
+	}
+	if len(work.inputs) != 0 {
+		t.Fatalf("enqueued inputs = %+v; want none", work.inputs)
 	}
 	if len(store.status) != 2 {
 		t.Fatalf("status calls = %+v; want reserve and restore", store.status)
@@ -183,10 +210,12 @@ func TestEnqueuer_OnScanCompleteUsesLibraryID(t *testing.T) {
 func TestEnqueuer_PropagatesCacheAndQueueErrors(t *testing.T) {
 	ctx := context.Background()
 	results := []models.ScanResult{{
-		ID:    1,
-		Track: models.Track{ArtistName: "Artist", TrackName: "Title"},
+		ID:       1,
+		FilePath: "/music/error.mp3",
+		Track:    models.Track{ArtistName: "Artist", TrackName: "Title"},
 	}}
 	cacheErr := errors.New("cache failed")
+	queueErr := errors.New("queue failed")
 
 	tests := []struct {
 		name  string
@@ -199,6 +228,12 @@ func TestEnqueuer_PropagatesCacheAndQueueErrors(t *testing.T) {
 			cache: fakeLyricsCache{err: cacheErr},
 			queue: &fakeWorkQueue{},
 			want:  cacheErr,
+		},
+		{
+			name:  "queue",
+			cache: fakeLyricsCache{hits: map[string]bool{}},
+			queue: &fakeWorkQueue{err: queueErr},
+			want:  queueErr,
 		},
 	}
 
