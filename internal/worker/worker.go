@@ -69,7 +69,7 @@ func (w *Worker) RunOnce(ctx context.Context) error {
 	}
 	item, err := w.queue.Dequeue(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("worker: dequeue: %w", err)
 	}
 
 	song, cacheHit, err := w.song(ctx, item.Inputs.Track)
@@ -82,13 +82,19 @@ func (w *Worker) RunOnce(ctx context.Context) error {
 
 	for _, p := range outputPaths(item.Inputs) {
 		if err := w.writer.WriteLRC(song, p.Filename, p.Outdir); err != nil {
+			err = fmt.Errorf("worker: write item %d output %s/%s: %w", item.ID, p.Outdir, p.Filename, err)
 			slog.Warn("worker write failed", "id", item.ID, "artist", item.Inputs.Track.ArtistName, "track", item.Inputs.Track.TrackName, "outdir", p.Outdir, "filename", p.Filename, "error", err)
 			return w.fail(ctx, item.ID, err)
 		}
 	}
 
-	if err := w.queue.Complete(context.WithoutCancel(ctx), item.ID); err != nil {
-		return fmt.Errorf("worker: complete item %d: %w", item.ID, err)
+	ctxNoCancel := context.WithoutCancel(ctx)
+	if err := w.queue.Complete(ctxNoCancel, item.ID); err != nil {
+		cause := fmt.Errorf("worker: complete item %d: %w", item.ID, err)
+		if _, failErr := w.queue.Fail(ctxNoCancel, item.ID, cause); failErr != nil {
+			return fmt.Errorf("worker: complete item %d and mark failed: %w", item.ID, errors.Join(err, failErr))
+		}
+		return fmt.Errorf("worker: complete item %d (marked failed): %w", item.ID, err)
 	}
 	return nil
 }
@@ -99,7 +105,7 @@ func (w *Worker) song(ctx context.Context, track models.Track) (models.Song, boo
 		return decodeSong(cached, track), true, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return models.Song{}, false, err
+		return models.Song{}, false, fmt.Errorf("worker: lookup exact cache: %w", err)
 	}
 
 	cached, err = w.cache.LookupFallback(ctx, track.ArtistName, track.TrackName)
@@ -107,19 +113,19 @@ func (w *Worker) song(ctx context.Context, track models.Track) (models.Song, boo
 		return decodeSong(cached, track), true, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return models.Song{}, false, err
+		return models.Song{}, false, fmt.Errorf("worker: lookup fallback cache: %w", err)
 	}
 
 	song, err := w.fetcher.FindLyrics(ctx, track)
 	if err != nil {
-		return models.Song{}, false, err
+		return models.Song{}, false, fmt.Errorf("worker: find lyrics: %w", err)
 	}
 	encoded, err := encodeSong(song)
 	if err != nil {
 		return models.Song{}, false, err
 	}
-	if err := w.cache.Store(ctx, song.Track.ArtistName, song.Track.TrackName, song.Track.AlbumName, encoded); err != nil {
-		return models.Song{}, false, err
+	if err := w.cache.Store(ctx, track.ArtistName, track.TrackName, track.AlbumName, encoded); err != nil {
+		return models.Song{}, false, fmt.Errorf("worker: store cache: %w", err)
 	}
 	return song, false, nil
 }

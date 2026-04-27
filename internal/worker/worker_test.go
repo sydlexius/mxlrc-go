@@ -11,10 +11,12 @@ import (
 )
 
 type fakeQueue struct {
-	items      []queue.WorkItem
-	completed  []int64
-	failed     []int64
-	failCauses []error
+	items       []queue.WorkItem
+	completed   []int64
+	failed      []int64
+	failCauses  []error
+	completeErr error
+	failErr     error
 }
 
 func (q *fakeQueue) Dequeue(_ context.Context) (queue.WorkItem, error) {
@@ -27,21 +29,34 @@ func (q *fakeQueue) Dequeue(_ context.Context) (queue.WorkItem, error) {
 }
 
 func (q *fakeQueue) Complete(_ context.Context, id int64) error {
+	if q.completeErr != nil {
+		return q.completeErr
+	}
 	q.completed = append(q.completed, id)
 	return nil
 }
 
 func (q *fakeQueue) Fail(_ context.Context, id int64, cause error) (queue.WorkItem, error) {
+	if q.failErr != nil {
+		return queue.WorkItem{}, q.failErr
+	}
 	q.failed = append(q.failed, id)
 	q.failCauses = append(q.failCauses, cause)
 	return queue.WorkItem{ID: id, Status: queue.StatusFailed}, nil
+}
+
+type cacheStore struct {
+	artist string
+	title  string
+	album  string
+	lyrics string
 }
 
 type fakeCache struct {
 	exact    string
 	fallback string
 	err      error
-	stores   []string
+	stores   []cacheStore
 }
 
 func (c *fakeCache) LookupExact(context.Context, string, string, string) (string, error) {
@@ -64,8 +79,8 @@ func (c *fakeCache) LookupFallback(context.Context, string, string) (string, err
 	return c.fallback, nil
 }
 
-func (c *fakeCache) Store(_ context.Context, _, _, _, lyrics string) error {
-	c.stores = append(c.stores, lyrics)
+func (c *fakeCache) Store(_ context.Context, artist, title, album, lyrics string) error {
+	c.stores = append(c.stores, cacheStore{artist: artist, title: title, album: album, lyrics: lyrics})
 	return nil
 }
 
@@ -164,6 +179,9 @@ func TestRunOnceFetchesCachesWritesAllOutputsAndCompletes(t *testing.T) {
 	if len(cache.stores) != 1 {
 		t.Fatalf("cache stores = %d; want 1", len(cache.stores))
 	}
+	if cache.stores[0].artist != "Artist" || cache.stores[0].title != "Title" {
+		t.Fatalf("cache store key = %+v; want Artist/Title", cache.stores[0])
+	}
 	if len(writer.writes) != 2 {
 		t.Fatalf("writes = %d; want 2", len(writer.writes))
 	}
@@ -172,6 +190,37 @@ func TestRunOnceFetchesCachesWritesAllOutputsAndCompletes(t *testing.T) {
 	}
 	if len(q.completed) != 1 || q.completed[0] != 2 {
 		t.Fatalf("completed = %v; want [2]", q.completed)
+	}
+}
+
+func TestRunOnceStoresCacheWithRequestedTrackKeys(t *testing.T) {
+	track := models.Track{ArtistName: "Requested Artist", TrackName: "Requested Title", AlbumName: "Requested Album"}
+	fetched := models.Track{ArtistName: "Canonical Artist", TrackName: "Canonical Title", AlbumName: "Canonical Album"}
+	q := &fakeQueue{items: []queue.WorkItem{{
+		ID: 6,
+		Inputs: models.Inputs{
+			Track:    track,
+			Outdir:   "out",
+			Filename: "requested-title.lrc",
+		},
+	}}}
+	cache := &fakeCache{}
+	fetcher := &fakeFetcher{song: models.Song{
+		Track:  fetched,
+		Lyrics: models.Lyrics{LyricsBody: "fresh lyrics"},
+	}}
+
+	w := New(q, cache, fetcher, &fakeWriter{})
+	if err := w.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+
+	if len(cache.stores) != 1 {
+		t.Fatalf("cache stores = %d; want 1", len(cache.stores))
+	}
+	store := cache.stores[0]
+	if store.artist != track.ArtistName || store.title != track.TrackName || store.album != track.AlbumName {
+		t.Fatalf("cache store key = %+v; want requested track %+v", store, track)
 	}
 }
 
@@ -192,6 +241,41 @@ func TestRunOnceFailureMarksQueueFailed(t *testing.T) {
 	}
 	if !errors.Is(q.failCauses[0], wantErr) {
 		t.Fatalf("fail cause = %v; want %v", q.failCauses[0], wantErr)
+	}
+	if len(q.completed) != 0 {
+		t.Fatalf("completed = %v; want none", q.completed)
+	}
+}
+
+func TestRunOnceCompleteFailureMarksQueueFailed(t *testing.T) {
+	completeErr := errors.New("complete failed")
+	track := models.Track{ArtistName: "Artist", TrackName: "Title"}
+	q := &fakeQueue{
+		items: []queue.WorkItem{{
+			ID: 7,
+			Inputs: models.Inputs{
+				Track:    track,
+				Outdir:   "out",
+				Filename: "artist-title.lrc",
+			},
+		}},
+		completeErr: completeErr,
+	}
+	fetcher := &fakeFetcher{song: models.Song{
+		Track:  track,
+		Lyrics: models.Lyrics{LyricsBody: "fresh lyrics"},
+	}}
+	w := New(q, &fakeCache{}, fetcher, &fakeWriter{})
+
+	err := w.RunOnce(context.Background())
+	if !errors.Is(err, completeErr) {
+		t.Fatalf("RunOnce error = %v; want complete failure", err)
+	}
+	if len(q.failed) != 1 || q.failed[0] != 7 {
+		t.Fatalf("failed = %v; want [7]", q.failed)
+	}
+	if len(q.failCauses) != 1 || !errors.Is(q.failCauses[0], completeErr) {
+		t.Fatalf("fail causes = %v; want complete failure", q.failCauses)
 	}
 	if len(q.completed) != 0 {
 		t.Fatalf("completed = %v; want none", q.completed)
