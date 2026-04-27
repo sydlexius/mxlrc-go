@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+
+	"github.com/sydlexius/mxlrcsvc-go/internal/normalize"
 )
 
 // TestOpen_CreatesDatabaseAndAppliesMigrations verifies that Open succeeds,
@@ -212,5 +214,76 @@ func TestOpen_ScanResultsUniqueIndex(t *testing.T) {
 	}
 	if len(cols) != 2 || cols[0] != "library_id" || cols[1] != "file_path" {
 		t.Fatalf("scan result index columns = %v; want [library_id file_path]", cols)
+	}
+}
+
+func TestOpen_WorkQueueBackoffMigration(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "work-queue.db")
+
+	sqlDB, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+
+	columns := []string{"artist_key", "title_key", "filename", "attempts", "next_attempt_at", "last_error", "completed_at"}
+	for _, v := range columns {
+		var count int
+		row := sqlDB.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM pragma_table_info('work_queue') WHERE name = ?", v)
+		if err := row.Scan(&count); err != nil {
+			t.Fatalf("query work_queue column %q: %v", v, err)
+		}
+		if count != 1 {
+			t.Fatalf("work_queue column %q count = %d; want 1", v, count)
+		}
+	}
+
+	var unique int
+	row := sqlDB.QueryRowContext(ctx,
+		"SELECT [unique] FROM pragma_index_list('work_queue') WHERE name = 'idx_work_queue_artist_title_key'")
+	if err := row.Scan(&unique); err != nil {
+		t.Fatalf("query work queue dedupe index: %v", err)
+	}
+	if unique != 1 {
+		t.Fatalf("work queue dedupe index unique = %d; want 1", unique)
+	}
+
+	var dequeueIndexCount int
+	row = sqlDB.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_work_queue_dequeue'")
+	if err := row.Scan(&dequeueIndexCount); err != nil {
+		t.Fatalf("query work queue dequeue index: %v", err)
+	}
+	if dequeueIndexCount != 1 {
+		t.Fatalf("work queue dequeue index count = %d; want 1", dequeueIndexCount)
+	}
+}
+
+func TestOpen_NormalizeKeySQLFunction(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "normalize-key.db")
+
+	sqlDB, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+
+	var got string
+	if err := sqlDB.QueryRowContext(ctx, `SELECT normalize_key(?)`, "  Beyoncé  ").Scan(&got); err != nil {
+		t.Fatalf("query normalize_key: %v", err)
+	}
+	if want := normalize.NormalizeKey("  Beyoncé  "); got != want {
+		t.Fatalf("normalize_key SQL result = %q; want %q", got, want)
 	}
 }

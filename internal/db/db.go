@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -11,11 +12,29 @@ import (
 	"path/filepath"
 
 	"github.com/pressly/goose/v3"
-	_ "modernc.org/sqlite" // pure-Go SQLite driver
+	"github.com/sydlexius/mxlrcsvc-go/internal/normalize"
+	"modernc.org/sqlite" // pure-Go SQLite driver
 )
 
 //go:embed migrations/*.sql
 var migrations embed.FS
+
+func init() {
+	sqlite.MustRegisterDeterministicScalarFunction(
+		"normalize_key",
+		1,
+		func(_ *sqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
+			if len(args) != 1 || args[0] == nil {
+				return "", nil
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				return "", fmt.Errorf("normalize_key: expected string, got %T", args[0])
+			}
+			return normalize.NormalizeKey(s), nil
+		},
+	)
+}
 
 // Open opens (or creates) the SQLite database at path, applies pragmas,
 // and runs any pending goose migrations. Returns a ready-to-use *sql.DB.
