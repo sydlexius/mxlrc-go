@@ -11,8 +11,8 @@ ALTER TABLE work_queue ADD COLUMN last_error TEXT NOT NULL DEFAULT '';
 ALTER TABLE work_queue ADD COLUMN completed_at DATETIME;
 
 UPDATE work_queue
-SET artist_key = lower(trim(artist)),
-    title_key = lower(trim(title)),
+SET artist_key = normalize_key(artist),
+    title_key = normalize_key(title),
     next_attempt_at = CASE
         WHEN next_attempt_at = '' THEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
         ELSE next_attempt_at

@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+
+	"github.com/sydlexius/mxlrcsvc-go/internal/normalize"
 )
 
 // TestOpen_CreatesDatabaseAndAppliesMigrations verifies that Open succeeds,
@@ -260,5 +262,28 @@ func TestOpen_WorkQueueBackoffMigration(t *testing.T) {
 	}
 	if dequeueIndexCount != 1 {
 		t.Fatalf("work queue dequeue index count = %d; want 1", dequeueIndexCount)
+	}
+}
+
+func TestOpen_NormalizeKeySQLFunction(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "normalize-key.db")
+
+	sqlDB, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close db: %v", err)
+		}
+	})
+
+	var got string
+	if err := sqlDB.QueryRowContext(ctx, `SELECT normalize_key(?)`, "  Beyoncé  ").Scan(&got); err != nil {
+		t.Fatalf("query normalize_key: %v", err)
+	}
+	if want := normalize.NormalizeKey("  Beyoncé  "); got != want {
+		t.Fatalf("normalize_key SQL result = %q; want %q", got, want)
 	}
 }
