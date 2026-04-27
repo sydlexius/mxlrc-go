@@ -44,9 +44,16 @@ type Song struct {
 
 // Inputs represents a single work item in the processing queue.
 type Inputs struct {
-	Track    Track
-	Outdir   string
-	Filename string
+	Track       Track
+	Outdir      string
+	Filename    string
+	OutputPaths []OutputPath
+}
+
+// OutputPath represents one lyrics output destination.
+type OutputPath struct {
+	Outdir   string `json:"outdir,omitempty"`
+	Filename string `json:"filename,omitempty"`
 }
 
 // Library represents a configured music library root.

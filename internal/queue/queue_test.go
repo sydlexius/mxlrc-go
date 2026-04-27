@@ -182,6 +182,38 @@ func TestDBQueue_EnqueueDuplicateDoesNotRequeueProcessingItem(t *testing.T) {
 	}
 }
 
+func TestDBQueue_EnqueuePersistsOutputPaths(t *testing.T) {
+	ctx := context.Background()
+	q := NewDBQueue(openQueueTestDB(t))
+	now := time.Date(2026, 4, 27, 12, 0, 0, 0, time.UTC)
+	q.now = func() time.Time { return now }
+
+	item, err := q.Enqueue(ctx, models.Inputs{
+		Track: models.Track{ArtistName: "Artist", TrackName: "Title"},
+		OutputPaths: []models.OutputPath{
+			{Outdir: "out-a", Filename: "a.lrc"},
+			{Outdir: "out-b", Filename: "b.lrc"},
+		},
+	}, 1)
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+	if len(item.Inputs.OutputPaths) != 2 {
+		t.Fatalf("enqueued output paths = %+v; want 2 paths", item.Inputs.OutputPaths)
+	}
+
+	got, err := q.Dequeue(ctx)
+	if err != nil {
+		t.Fatalf("Dequeue: %v", err)
+	}
+	if len(got.Inputs.OutputPaths) != 2 {
+		t.Fatalf("dequeued output paths = %+v; want 2 paths", got.Inputs.OutputPaths)
+	}
+	if got.Inputs.OutputPaths[0].Outdir != "out-a" || got.Inputs.OutputPaths[1].Filename != "b.lrc" {
+		t.Fatalf("dequeued output paths = %+v; want persisted paths", got.Inputs.OutputPaths)
+	}
+}
+
 func TestDBQueue_CompleteRequiresProcessingStatus(t *testing.T) {
 	ctx := context.Background()
 	q := NewDBQueue(openQueueTestDB(t))

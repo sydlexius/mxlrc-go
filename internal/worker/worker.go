@@ -1,0 +1,179 @@
+package worker
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+
+	"github.com/sydlexius/mxlrcsvc-go/internal/lyrics"
+	"github.com/sydlexius/mxlrcsvc-go/internal/models"
+	"github.com/sydlexius/mxlrcsvc-go/internal/musixmatch"
+	"github.com/sydlexius/mxlrcsvc-go/internal/normalize"
+	"github.com/sydlexius/mxlrcsvc-go/internal/queue"
+)
+
+// Queue provides durable worker queue operations.
+type Queue interface {
+	Dequeue(ctx context.Context) (queue.WorkItem, error)
+	Complete(ctx context.Context, id int64) error
+	Fail(ctx context.Context, id int64, cause error) (queue.WorkItem, error)
+}
+
+// Cache provides lyrics cache operations.
+type Cache interface {
+	LookupExact(ctx context.Context, artist, title, album string) (string, error)
+	LookupFallback(ctx context.Context, artist, title string) (string, error)
+	Store(ctx context.Context, artist, title, album, lyrics string) error
+}
+
+// Worker consumes queued lyrics work one item at a time.
+type Worker struct {
+	queue   Queue
+	cache   Cache
+	fetcher musixmatch.Fetcher
+	writer  lyrics.Writer
+}
+
+var errQueueEmpty = errors.New("worker queue empty")
+
+// New creates a queue consumer worker.
+func New(q Queue, c Cache, fetcher musixmatch.Fetcher, writer lyrics.Writer) *Worker {
+	return &Worker{
+		queue:   q,
+		cache:   c,
+		fetcher: fetcher,
+		writer:  writer,
+	}
+}
+
+// Run consumes ready work until the queue is empty or ctx is canceled.
+func (w *Worker) Run(ctx context.Context) error {
+	for {
+		if err := w.RunOnce(ctx); err != nil {
+			if errors.Is(err, errQueueEmpty) {
+				return nil
+			}
+			if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+				return nil
+			}
+			return err
+		}
+	}
+}
+
+// RunOnce claims and processes one ready queue item.
+func (w *Worker) RunOnce(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	item, err := w.queue.Dequeue(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errQueueEmpty
+		}
+		return fmt.Errorf("worker: dequeue: %w", err)
+	}
+
+	song, cacheHit, err := w.song(ctx, item.Inputs.Track)
+	if err != nil {
+		slog.Warn("worker song resolution failed", "id", item.ID, "artist", item.Inputs.Track.ArtistName, "track", item.Inputs.Track.TrackName, "error", err)
+		return w.fail(ctx, item.ID, err)
+	}
+	confidence := Confidence(item.Inputs.Track, song.Track)
+	slog.Info("worker lyrics match", "artist", item.Inputs.Track.ArtistName, "track", item.Inputs.Track.TrackName, "confidence", confidence, "cache_hit", cacheHit)
+
+	for _, p := range outputPaths(item.Inputs) {
+		if err := w.writer.WriteLRC(song, p.Filename, p.Outdir); err != nil {
+			err = fmt.Errorf("worker: write item %d output %s/%s: %w", item.ID, p.Outdir, p.Filename, err)
+			slog.Warn("worker write failed", "id", item.ID, "artist", item.Inputs.Track.ArtistName, "track", item.Inputs.Track.TrackName, "outdir", p.Outdir, "filename", p.Filename, "error", err)
+			return w.fail(ctx, item.ID, err)
+		}
+	}
+
+	ctxNoCancel := context.WithoutCancel(ctx)
+	if err := w.queue.Complete(ctxNoCancel, item.ID); err != nil {
+		cause := fmt.Errorf("worker: complete item %d: %w", item.ID, err)
+		if _, err := w.queue.Fail(ctxNoCancel, item.ID, cause); err != nil {
+			return fmt.Errorf("worker: complete item %d and mark failed: %w", item.ID, errors.Join(cause, err))
+		}
+		return fmt.Errorf("worker: complete item %d (marked failed): %w", item.ID, cause)
+	}
+	return nil
+}
+
+func (w *Worker) song(ctx context.Context, track models.Track) (models.Song, bool, error) {
+	cached, err := w.cache.LookupExact(ctx, track.ArtistName, track.TrackName, track.AlbumName)
+	if err == nil {
+		return decodeSong(cached, track), true, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return models.Song{}, false, fmt.Errorf("worker: lookup exact cache: %w", err)
+	}
+
+	cached, err = w.cache.LookupFallback(ctx, track.ArtistName, track.TrackName)
+	if err == nil {
+		return decodeSong(cached, track), true, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return models.Song{}, false, fmt.Errorf("worker: lookup fallback cache: %w", err)
+	}
+
+	song, err := w.fetcher.FindLyrics(ctx, track)
+	if err != nil {
+		return models.Song{}, false, fmt.Errorf("worker: find lyrics: %w", err)
+	}
+	encoded, err := encodeSong(song)
+	if err != nil {
+		return models.Song{}, false, err
+	}
+	if err := w.cache.Store(ctx, track.ArtistName, track.TrackName, track.AlbumName, encoded); err != nil {
+		return models.Song{}, false, fmt.Errorf("worker: store cache: %w", err)
+	}
+	return song, false, nil
+}
+
+func (w *Worker) fail(ctx context.Context, id int64, cause error) error {
+	if _, err := w.queue.Fail(context.WithoutCancel(ctx), id, cause); err != nil {
+		return fmt.Errorf("worker: fail item %d after %v: %w", id, cause, err)
+	}
+	return nil
+}
+
+func outputPaths(inputs models.Inputs) []models.OutputPath {
+	if len(inputs.OutputPaths) > 0 {
+		return inputs.OutputPaths
+	}
+	return []models.OutputPath{{
+		Outdir:   inputs.Outdir,
+		Filename: inputs.Filename,
+	}}
+}
+
+func encodeSong(song models.Song) (string, error) {
+	b, err := json.Marshal(song)
+	if err != nil {
+		return "", fmt.Errorf("worker: encode song cache: %w", err)
+	}
+	return string(b), nil
+}
+
+func decodeSong(s string, fallback models.Track) models.Song {
+	var song models.Song
+	if err := json.Unmarshal([]byte(s), &song); err == nil && (song.Track.ArtistName != "" || song.Track.TrackName != "") {
+		return song
+	}
+	return models.Song{
+		Track:  fallback,
+		Lyrics: models.Lyrics{LyricsBody: s},
+	}
+}
+
+// Confidence returns a simple normalized metadata match score in the range 0..1.
+func Confidence(want models.Track, got models.Track) float64 {
+	artistScore := normalize.MatchConfidence(want.ArtistName, got.ArtistName)
+	titleScore := normalize.MatchConfidence(want.TrackName, got.TrackName)
+	return (artistScore + titleScore) / 2
+}
