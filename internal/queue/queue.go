@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -108,11 +109,15 @@ func NewDBQueue(db *sql.DB) *DBQueue {
 // item with the same normalized artist/title key.
 func (q *DBQueue) Enqueue(ctx context.Context, inputs models.Inputs, priority int) (WorkItem, error) {
 	now := formatTime(q.now())
+	outputPaths, err := marshalOutputPaths(inputs)
+	if err != nil {
+		return WorkItem{}, err
+	}
 	row := q.db.QueryRowContext(ctx,
 		`INSERT INTO work_queue (
-             artist, title, artist_key, title_key, outdir, filename, status, priority, next_attempt_at
+             artist, title, artist_key, title_key, outdir, filename, output_paths, status, priority, next_attempt_at
          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(artist_key, title_key) DO UPDATE SET
              artist = CASE
                  WHEN work_queue.status IN ('done', 'processing') THEN work_queue.artist
@@ -129,6 +134,10 @@ func (q *DBQueue) Enqueue(ctx context.Context, inputs models.Inputs, priority in
              filename = CASE
                  WHEN work_queue.status IN ('done', 'processing') THEN work_queue.filename
                  ELSE excluded.filename
+             END,
+             output_paths = CASE
+                 WHEN work_queue.status IN ('done', 'processing') THEN work_queue.output_paths
+                 ELSE excluded.output_paths
              END,
              priority = max(work_queue.priority, excluded.priority),
              status = CASE
@@ -148,13 +157,14 @@ func (q *DBQueue) Enqueue(ctx context.Context, inputs models.Inputs, priority in
                  ELSE NULL
              END
          RETURNING id, artist, title, outdir, filename, status, priority, attempts,
-                   next_attempt_at, last_error, created_at, updated_at, completed_at`,
+                   next_attempt_at, last_error, created_at, updated_at, completed_at, output_paths`,
 		inputs.Track.ArtistName,
 		inputs.Track.TrackName,
 		normalize.NormalizeKey(inputs.Track.ArtistName),
 		normalize.NormalizeKey(inputs.Track.TrackName),
 		inputs.Outdir,
 		inputs.Filename,
+		outputPaths,
 		StatusPending,
 		priority,
 		now,
@@ -181,7 +191,7 @@ func (q *DBQueue) Dequeue(ctx context.Context) (WorkItem, error) {
              LIMIT 1
          )
          RETURNING id, artist, title, outdir, filename, status, priority, attempts,
-                   next_attempt_at, last_error, created_at, updated_at, completed_at`,
+                   next_attempt_at, last_error, created_at, updated_at, completed_at, output_paths`,
 		now,
 	)
 	item, err := scanWorkItem(row)
@@ -247,7 +257,7 @@ func (q *DBQueue) Fail(ctx context.Context, id int64, cause error) (WorkItem, er
          WHERE id = ?
            AND status = 'processing'
          RETURNING id, artist, title, outdir, filename, status, priority, attempts,
-                   next_attempt_at, last_error, created_at, updated_at, completed_at`,
+                   next_attempt_at, last_error, created_at, updated_at, completed_at, output_paths`,
 		nextAttempts,
 		nextAttemptAt,
 		lastError,
@@ -289,7 +299,7 @@ type rowScanner interface {
 
 func scanWorkItem(row rowScanner) (WorkItem, error) {
 	var item WorkItem
-	var nextAttemptAt, createdAt, updatedAt string
+	var nextAttemptAt, createdAt, updatedAt, outputPaths string
 	var completedAt sql.NullString
 	err := row.Scan(
 		&item.ID,
@@ -305,6 +315,7 @@ func scanWorkItem(row rowScanner) (WorkItem, error) {
 		&createdAt,
 		&updatedAt,
 		&completedAt,
+		&outputPaths,
 	)
 	if err != nil {
 		return WorkItem{}, err
@@ -328,7 +339,43 @@ func scanWorkItem(row rowScanner) (WorkItem, error) {
 		}
 		item.CompletedAt = &t
 	}
+	item.Inputs.OutputPaths, err = unmarshalOutputPaths(outputPaths, item.Inputs.Outdir, item.Inputs.Filename)
+	if err != nil {
+		return WorkItem{}, err
+	}
 	return item, nil
+}
+
+func marshalOutputPaths(inputs models.Inputs) (string, error) {
+	paths := inputs.OutputPaths
+	if len(paths) == 0 {
+		paths = []models.OutputPath{{
+			Outdir:   inputs.Outdir,
+			Filename: inputs.Filename,
+		}}
+	}
+	b, err := json.Marshal(paths)
+	if err != nil {
+		return "", fmt.Errorf("queue: marshal output paths: %w", err)
+	}
+	return string(b), nil
+}
+
+func unmarshalOutputPaths(s string, outdir string, filename string) ([]models.OutputPath, error) {
+	if s == "" {
+		return []models.OutputPath{{
+			Outdir:   outdir,
+			Filename: filename,
+		}}, nil
+	}
+	var paths []models.OutputPath
+	if err := json.Unmarshal([]byte(s), &paths); err != nil {
+		return nil, fmt.Errorf("queue: unmarshal output paths: %w", err)
+	}
+	if len(paths) == 0 {
+		paths = append(paths, models.OutputPath{Outdir: outdir, Filename: filename})
+	}
+	return paths, nil
 }
 
 func parseTime(s string) (time.Time, error) {

@@ -95,6 +95,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260411-l30 | issues #11 and #12 (Milestone 1) | 2026-04-11 | 2448d8f | [260411-l30-issues-11-and-12-milestone-1](./quick/260411-l30-issues-11-and-12-milestone-1/) |
 | 260411-p8r | Replace wantEq sentinel with *float64 pointer (issue #36) | 2026-04-12 | 8515549 | [260411-p8r-work-on-issue-36](./quick/260411-p8r-work-on-issue-36/) |
+| 260426-q19 | Queue consumer worker (issue #19) | 2026-04-26 | pending | [260426-q19-queue-consumer-worker](./quick/260426-q19-queue-consumer-worker/) |
 
 ## Session Continuity
 
