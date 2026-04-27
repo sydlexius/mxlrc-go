@@ -1,14 +1,7 @@
-# MxLRC
-[![build](https://github.com/sydlexius/mxlrcsvc-go/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sydlexius/mxlrcsvc-go/actions/workflows/ci.yml)
+# mxlrcgo-svc
+[![build](https://github.com/sydlexius/mxlrcgo-svc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sydlexius/mxlrcgo-svc/actions/workflows/ci.yml)
 
 Command line tool to fetch synced lyrics from [Musixmatch](https://www.musixmatch.com/) and save it as *.lrc file.
-
----
-
-## Python version
-[Check it here](https://github.com/fashni/MxLRC)
-
----
 
 ## Download
 ### Standalone binary
@@ -17,14 +10,14 @@ Command line tool to fetch synced lyrics from [Musixmatch](https://www.musixmatc
 ### Build from source
 Required Go 1.25+
 ```
-go install github.com/sydlexius/mxlrcsvc-go/cmd/mxlrcsvc-go@latest
+go install github.com/sydlexius/mxlrcgo-svc/cmd/mxlrcgo-svc@latest
 ```
 
 ---
 
 ## Usage
 ```
-Usage: mxlrcsvc-go [--outdir OUTDIR] [--cooldown COOLDOWN] [--token TOKEN] SONG [SONG ...]
+Usage: mxlrcgo-svc [--outdir OUTDIR] [--cooldown COOLDOWN] [--token TOKEN] SONG [SONG ...]
 
 Positional arguments:
   SONG                        song information in [ artist,title ] format (required)
@@ -43,19 +36,19 @@ Options:
 ## Example:
 ### One song
 ```
-mxlrcsvc-go adele,hello
+mxlrcgo-svc adele,hello
 ```
 ### Multiple song and custom output directory
 ```
-mxlrcsvc-go adele,hello "the killers,mr. brightside" -o some_directory
+mxlrcgo-svc adele,hello "the killers,mr. brightside" -o some_directory
 ```
 ### With a text file and custom cooldown time
 ```
-mxlrcsvc-go example_input.txt -c 20
+mxlrcgo-svc example_input.txt -c 20
 ```
 ### Directory Mode (recursive)
 ```
-mxlrcsvc-go "Dream Theater"
+mxlrcgo-svc "Dream Theater"
 ```
 > **_This option overrides the `-o/--outdir` argument which means the lyrics will be saved in the same directory as the given input._**
 
@@ -80,13 +73,13 @@ A Musixmatch API token is required. Supply it using any of the following methods
 
 1. **`--token` CLI flag** — highest priority
    ```
-   mxlrcsvc-go --token YOUR_TOKEN adele,hello
+   mxlrcgo-svc --token YOUR_TOKEN adele,hello
    ```
 
 2. **`MUSIXMATCH_TOKEN` environment variable**
    ```
    export MUSIXMATCH_TOKEN=YOUR_TOKEN
-   mxlrcsvc-go adele,hello
+   mxlrcgo-svc adele,hello
    ```
 
 3. **`.env` file** — place in the working directory where you run the command
