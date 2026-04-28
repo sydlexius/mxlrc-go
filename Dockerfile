@@ -17,8 +17,8 @@ LABEL org.opencontainers.image.source="https://github.com/sydlexius/mxlrcgo-svc"
       org.opencontainers.image.licenses="MIT"
 
 RUN apk add --no-cache ca-certificates su-exec tzdata && \
-    { addgroup mxlrcgo 2>/dev/null || true; } && \
-    { adduser -u 99 -G mxlrcgo -s /bin/sh -D mxlrcgo 2>/dev/null || true; } && \
+    { grep -q "^mxlrcgo:" /etc/group || addgroup mxlrcgo; } && \
+    { id -u mxlrcgo >/dev/null 2>&1 || adduser -u 99 -G mxlrcgo -s /bin/sh -D mxlrcgo; } && \
     mkdir -p /config /music && \
     chown mxlrcgo:mxlrcgo /config /music
 
