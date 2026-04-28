@@ -56,7 +56,7 @@ mxlrcgo-svc "Dream Theater"
 ```
 > **_This option overrides the `-o/--outdir` argument which means the lyrics will be saved in the same directory as the given input._**
 >
-> **_The `-d/--depth` argument limit the depth of subdirectory to scan. Use `-d 0` or `--depth 0` to only scan the specified directory._**
+> **_The `-d/--depth` argument limits the depth of subdirectories to scan; use `-d 0` or `--depth 0` to only scan the specified directory._**
 
 ### Lidarr webhook server
 ```sh
@@ -83,20 +83,20 @@ Follow steps 1 to 5 from the guide [here](https://spicetify.app/docs/faq#sometim
 A Musixmatch API token is required. Supply it using any of the following methods (listed in order of precedence):
 
 1. **`--token` CLI flag** — highest priority
-   ```sh
-   mxlrcgo-svc --token YOUR_TOKEN adele,hello
-   ```
+  ```sh
+  mxlrcgo-svc --token YOUR_TOKEN adele,hello
+  ```
 
 2. **`MUSIXMATCH_TOKEN` environment variable**
-   ```sh
-   export MUSIXMATCH_TOKEN=YOUR_TOKEN
-   mxlrcgo-svc adele,hello
-   ```
+  ```sh
+  export MUSIXMATCH_TOKEN=YOUR_TOKEN
+  mxlrcgo-svc adele,hello
+  ```
 
 3. **`.env` file** — place in the working directory where you run the command
-   ```sh
-   MUSIXMATCH_TOKEN=YOUR_TOKEN
-   ```
+  ```sh
+  MUSIXMATCH_TOKEN=YOUR_TOKEN
+  ```
 
 ## Credits
 * [Spicetify Lyrics Plus](https://github.com/spicetify/spicetify-cli/tree/master/CustomApps/lyrics-plus)
