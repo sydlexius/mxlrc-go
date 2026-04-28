@@ -182,6 +182,30 @@ func TestLidarrWebhookAuthAndEnqueueErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("forbidden", func(t *testing.T) {
+		h := NewHandler(&fakeAuth{err: auth.ErrForbiddenScope}, &fakeQueue{}, "lyrics")
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/webhooks/lidarr?apikey=bad", strings.NewReader(`{}`))
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d; want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("auth backend failure is retryable", func(t *testing.T) {
+		h := NewHandler(&fakeAuth{err: errors.New("auth store down")}, &fakeQueue{}, "lyrics")
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/webhooks/lidarr?apikey=key", strings.NewReader(`{}`))
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("status = %d; want %d", rec.Code, http.StatusInternalServerError)
+		}
+	})
+
 	t.Run("enqueue failure is retryable", func(t *testing.T) {
 		h := NewHandler(&fakeAuth{}, &fakeQueue{err: errors.New("db down")}, "lyrics")
 		body := `{"eventType":"Download","artist":{"artistName":"Artist"},"tracks":[{"title":"One"}]}`

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -162,7 +161,7 @@ func runWithOptions(opts runOptions) int {
 		if args.Listen != nil {
 			addr = *args.Listen
 		}
-		authSvc, err := webhookAuthService(cfg.Server.WebhookAPIKeys)
+		authSvc, err := auth.NewWebhookService(cfg.Server.WebhookAPIKeys)
 		if err != nil {
 			slog.Error("failed to configure webhook authentication", "error", err)
 			return 1
@@ -233,38 +232,4 @@ func runWithOptions(opts runOptions) int {
 		return 1
 	}
 	return 0
-}
-
-func webhookAuthService(rawKeys []string) (*auth.Service, error) {
-	if len(rawKeys) == 0 {
-		return nil, fmt.Errorf("at least one webhook API key is required")
-	}
-	store := auth.NewMemoryStore()
-	now := time.Now().UTC()
-	created := 0
-	for i, raw := range rawKeys {
-		raw = strings.TrimSpace(raw)
-		if raw == "" {
-			continue
-		}
-		if !strings.HasPrefix(raw, auth.KeyPrefix) {
-			return nil, fmt.Errorf("webhook API key %d: invalid format", i+1)
-		}
-		hash := auth.HashKey(raw)
-		key := auth.Key{
-			ID:        hash[:16],
-			Name:      fmt.Sprintf("webhook-%d", i+1),
-			Hash:      hash,
-			Scopes:    []auth.Scope{auth.ScopeWebhook},
-			CreatedAt: now,
-		}
-		if err := store.Create(context.Background(), key); err != nil {
-			return nil, fmt.Errorf("create webhook API key %d: %w", i+1, err)
-		}
-		created++
-	}
-	if created == 0 {
-		return nil, fmt.Errorf("at least one webhook API key is required")
-	}
-	return auth.NewService(store), nil
 }

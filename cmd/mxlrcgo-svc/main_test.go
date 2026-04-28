@@ -65,22 +65,6 @@ func isolateCLIEnv(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 }
 
-func TestWebhookAuthServiceValidatesConfiguredKey(t *testing.T) {
-	svc, err := webhookAuthService([]string{" mxlrc_configured "})
-	if err != nil {
-		t.Fatalf("webhookAuthService: %v", err)
-	}
-	if _, err := svc.ValidateKey(context.Background(), "mxlrc_configured", "webhook"); err != nil {
-		t.Fatalf("ValidateKey configured key: %v", err)
-	}
-}
-
-func TestWebhookAuthServiceRejectsMalformedKey(t *testing.T) {
-	if _, err := webhookAuthService([]string{"secret"}); err == nil {
-		t.Fatal("webhookAuthService malformed key returned nil error")
-	}
-}
-
 func writeConfig(t *testing.T, token string, cooldown int, outdir string, dbPath string) string {
 	t.Helper()
 	cfg := filepath.Join(t.TempDir(), "config.toml")

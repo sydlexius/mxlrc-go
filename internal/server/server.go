@@ -66,11 +66,15 @@ func (h *Handler) handleLidarr(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.auth.ValidateKey(r.Context(), apiKey(r), auth.ScopeWebhook); err != nil {
-		status := http.StatusUnauthorized
-		if errors.Is(err, auth.ErrForbiddenScope) {
-			status = http.StatusForbidden
+		switch {
+		case errors.Is(err, auth.ErrForbiddenScope):
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		case errors.Is(err, auth.ErrInvalidKey), errors.Is(err, auth.ErrRevokedKey):
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		default:
+			slog.Error("lidarr webhook authentication failed", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
-		http.Error(w, http.StatusText(status), status)
 		return
 	}
 

@@ -17,19 +17,23 @@ go install github.com/sydlexius/mxlrcgo-svc/cmd/mxlrcgo-svc@latest
 
 ## Usage
 ```text
-Usage: mxlrcgo-svc [--outdir OUTDIR] [--cooldown COOLDOWN] [--token TOKEN] SONG [SONG ...]
+Usage: mxlrcgo-svc [--outdir OUTDIR] [--cooldown COOLDOWN] [--depth DEPTH] [--update] [--upgrade] [--bfs] [--serve] [--listen LISTEN] [--token TOKEN] [--config CONFIG] [SONG ...]
 
 Positional arguments:
-  SONG                        song information in [ artist,title ] format (required)
+  SONG                        song information in [ artist,title ] format, a .txt file, or a directory path
 
 Options:
-  --outdir OUTDIR, -o OUTDIR  output directory [default: lyrics]
+  --outdir OUTDIR, -o OUTDIR  output directory (default: from config or 'lyrics')
   --cooldown COOLDOWN, -c COOLDOWN
-                              cooldown time in seconds [default: 15]
+                              cooldown time in seconds (default: from config or 15)
   --depth DEPTH, -d DEPTH     (directory mode) maximum recursion depth [default: 100]
-  --update, -u                (directory mode) update existing lyrics file
+  --update, -u                (directory mode) re-fetch and overwrite existing .lrc files
+  --upgrade                   (directory mode) re-fetch songs with .txt lyrics to promote to .lrc
   --bfs                       (directory mode) use breadth-first-search traversal
-  --token TOKEN, -t TOKEN     musixmatch token (or set MUSIXMATCH_TOKEN environment variable or create a .env file)
+  --serve                     run HTTP server mode
+  --listen LISTEN             HTTP listen address (default: from config or 127.0.0.1:3876)
+  --token TOKEN, -t TOKEN     musixmatch token (or MUSIXMATCH_TOKEN / MXLRC_API_TOKEN env var, or config file)
+  --config CONFIG             path to config file (default: XDG)
   --help, -h                  display this help and exit
 ```
 
@@ -53,6 +57,13 @@ mxlrcgo-svc "Dream Theater"
 > **_This option overrides the `-o/--outdir` argument which means the lyrics will be saved in the same directory as the given input._**
 
 > **_The `-d/--depth` argument limit the depth of subdirectory to scan. Use `-d 0` or `--depth 0` to only scan the specified directory._**
+
+### Lidarr webhook server
+```sh
+MXLRC_WEBHOOK_API_KEY=mxlrc_your_webhook_key mxlrcgo-svc --serve --listen 127.0.0.1:3876
+```
+
+The server listens on `MXLRC_SERVER_ADDR` when `--listen` is not provided. Configure one or more webhook keys with `MXLRC_WEBHOOK_API_KEY`, or put the server address and webhook keys in a config file and start with `--config path/to/config.toml --serve`.
 
 ## Development
 
