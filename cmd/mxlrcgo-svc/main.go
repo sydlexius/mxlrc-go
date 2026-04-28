@@ -26,7 +26,7 @@ import (
 
 // Args defines the CLI arguments for the application.
 type Args struct {
-	Song       []string `arg:"positional" help:"song information in [ artist,title ] format"`
+	Song       []string `arg:"positional" help:"song information in [ artist,title ] format, a .txt file, or a directory path"`
 	Outdir     *string  `arg:"-o,--outdir" help:"output directory (default: from config or 'lyrics')"`
 	Cooldown   *int     `arg:"-c,--cooldown" help:"cooldown time in seconds (default: from config or 15)"`
 	Depth      int      `arg:"-d,--depth" help:"(directory mode) maximum recursion depth" default:"100"`
@@ -161,7 +161,7 @@ func runWithOptions(opts runOptions) int {
 		if args.Listen != nil {
 			addr = *args.Listen
 		}
-		authSvc, err := auth.NewWebhookService(cfg.Server.WebhookAPIKeys)
+		authSvc, err := auth.NewWebhookService(ctx, cfg.Server.WebhookAPIKeys)
 		if err != nil {
 			slog.Error("failed to configure webhook authentication", "error", err)
 			return 1

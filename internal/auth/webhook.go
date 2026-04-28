@@ -8,7 +8,7 @@ import (
 )
 
 // NewWebhookService returns an auth service populated with configured webhook keys.
-func NewWebhookService(rawKeys []string) (*Service, error) {
+func NewWebhookService(ctx context.Context, rawKeys []string) (*Service, error) {
 	if len(rawKeys) == 0 {
 		return nil, fmt.Errorf("at least one webhook API key is required")
 	}
@@ -37,7 +37,7 @@ func NewWebhookService(rawKeys []string) (*Service, error) {
 			Scopes:    []Scope{ScopeWebhook},
 			CreatedAt: now,
 		}
-		if err := store.Create(context.Background(), key); err != nil {
+		if err := store.Create(ctx, key); err != nil {
 			return nil, fmt.Errorf("create webhook API key %d: %w", i+1, err)
 		}
 		created++

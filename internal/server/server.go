@@ -95,6 +95,7 @@ func (h *Handler) handleLidarr(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, v := range inputs {
 			if _, err := h.queue.Enqueue(r.Context(), v, h.priority); err != nil {
+				slog.Error("failed to enqueue work from lidarr webhook", "event", event, "error", err, "input", v)
 				http.Error(w, "enqueue failed", http.StatusInternalServerError)
 				return
 			}
@@ -114,6 +115,7 @@ func (h *Handler) handleLidarr(w http.ResponseWriter, r *http.Request) {
 		for _, v := range inputs {
 			n, err := h.queue.Cleanup(r.Context(), v)
 			if err != nil {
+				slog.Error("failed to clean queued work from lidarr webhook", "event", event, "error", err, "input", v)
 				http.Error(w, "cleanup failed", http.StatusInternalServerError)
 				return
 			}

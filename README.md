@@ -55,7 +55,7 @@ mxlrcgo-svc example_input.txt -c 20
 mxlrcgo-svc "Dream Theater"
 ```
 > **_This option overrides the `-o/--outdir` argument which means the lyrics will be saved in the same directory as the given input._**
-
+>
 > **_The `-d/--depth` argument limit the depth of subdirectory to scan. Use `-d 0` or `--depth 0` to only scan the specified directory._**
 
 ### Lidarr webhook server
