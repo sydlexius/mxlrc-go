@@ -206,7 +206,7 @@ func tokenSet(s string) map[string]bool {
 	})
 	out := make(map[string]bool, len(fields))
 	for _, f := range fields {
-		if len([]rune(f)) > 1 {
+		if f != "" {
 			out[f] = true
 		}
 	}

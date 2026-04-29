@@ -45,6 +45,13 @@ func TestSimilarityUsesTranscriptTokenCoverage(t *testing.T) {
 	}
 }
 
+func TestSimilarityKeepsSingleCharacterTokens(t *testing.T) {
+	got := Similarity("I am a", "I am a song")
+	if got != 1 {
+		t.Fatalf("Similarity = %v; want single-character tokens included", got)
+	}
+}
+
 func TestHTTPVerifierVerifyPostsAudioAndComparesTranscript(t *testing.T) {
 	audioPath := filepath.Join(t.TempDir(), "song.flac")
 	if err := os.WriteFile(audioPath, []byte("fake audio"), 0600); err != nil {
