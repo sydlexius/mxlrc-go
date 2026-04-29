@@ -42,6 +42,11 @@ type HTTPVerifier struct {
 	client                *http.Client
 }
 
+const (
+	minSampleDurationSeconds = 30 // minimum sampling window required by verification policy
+	maxSampleDurationSeconds = 60 // maximum sampling window keeps transcription payloads bounded
+)
+
 // NewHTTPVerifier creates a verifier for an OpenAI-compatible transcription API.
 func NewHTTPVerifier(baseURL string, sampleDurationSeconds int, minSimilarity float64, ffmpegPath string) (*HTTPVerifier, error) {
 	baseURL = strings.TrimSpace(baseURL)
@@ -128,11 +133,11 @@ func (v *HTTPVerifier) sample(ctx context.Context, audioPath string) (_ string, 
 }
 
 func clampSampleDuration(durationSeconds int) int {
-	if durationSeconds < 30 {
-		return 30
+	if durationSeconds < minSampleDurationSeconds {
+		return minSampleDurationSeconds
 	}
-	if durationSeconds > 60 {
-		return 60
+	if durationSeconds > maxSampleDurationSeconds {
+		return maxSampleDurationSeconds
 	}
 	return durationSeconds
 }
