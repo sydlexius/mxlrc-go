@@ -33,13 +33,14 @@ type Verifier interface {
 
 // HTTPVerifier calls a Whisper-compatible HTTP sidecar.
 type HTTPVerifier struct {
-	baseURL       string
-	minSimilarity float64
-	client        *http.Client
+	baseURL               string
+	sampleDurationSeconds int
+	minSimilarity         float64
+	client                *http.Client
 }
 
 // NewHTTPVerifier creates a verifier for an OpenAI-compatible transcription API.
-func NewHTTPVerifier(baseURL string, _ int, minSimilarity float64) (*HTTPVerifier, error) {
+func NewHTTPVerifier(baseURL string, sampleDurationSeconds int, minSimilarity float64) (*HTTPVerifier, error) {
 	baseURL = strings.TrimSpace(baseURL)
 	if baseURL == "" {
 		return nil, fmt.Errorf("verification: whisper_url must not be empty")
@@ -47,13 +48,17 @@ func NewHTTPVerifier(baseURL string, _ int, minSimilarity float64) (*HTTPVerifie
 	if _, err := url.ParseRequestURI(baseURL); err != nil {
 		return nil, fmt.Errorf("verification: invalid whisper_url: %w", err)
 	}
+	if sampleDurationSeconds <= 0 {
+		sampleDurationSeconds = 30
+	}
 	if minSimilarity <= 0 || minSimilarity > 1 {
 		minSimilarity = 0.35
 	}
 	return &HTTPVerifier{
-		baseURL:       strings.TrimRight(baseURL, "/"),
-		minSimilarity: minSimilarity,
-		client:        &http.Client{Timeout: 2 * time.Minute},
+		baseURL:               strings.TrimRight(baseURL, "/"),
+		sampleDurationSeconds: sampleDurationSeconds, // reserved for ffmpeg sampling before upload
+		minSimilarity:         minSimilarity,
+		client:                &http.Client{Timeout: 2 * time.Minute},
 	}, nil
 }
 
@@ -160,7 +165,9 @@ func SongText(song models.Song) string {
 				b.WriteString(text)
 			}
 		}
-		return b.String()
+		if b.Len() > 0 {
+			return b.String()
+		}
 	}
 	return strings.TrimSpace(song.Lyrics.LyricsBody)
 }

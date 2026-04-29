@@ -25,6 +25,19 @@ func TestSongTextPrefersSubtitles(t *testing.T) {
 	}
 }
 
+func TestSongTextFallsBackWhenSubtitleLinesBlank(t *testing.T) {
+	song := models.Song{
+		Lyrics: models.Lyrics{LyricsBody: "unsynced"},
+		Subtitles: models.Synced{Lines: []models.Lines{
+			{Text: ""},
+			{Text: "   "},
+		}},
+	}
+	if got := SongText(song); got != "unsynced" {
+		t.Fatalf("SongText = %q; want lyrics fallback", got)
+	}
+}
+
 func TestSimilarityUsesTranscriptTokenCoverage(t *testing.T) {
 	got := Similarity("hello bright world", "hello world this is the song")
 	if got < 0.66 {
@@ -60,6 +73,9 @@ func TestHTTPVerifierVerifyPostsAudioAndComparesTranscript(t *testing.T) {
 	v, err := NewHTTPVerifier(srv.URL, 45, 0.5)
 	if err != nil {
 		t.Fatalf("NewHTTPVerifier: %v", err)
+	}
+	if v.sampleDurationSeconds != 45 {
+		t.Fatalf("sampleDurationSeconds = %d; want 45", v.sampleDurationSeconds)
 	}
 	res, err := v.Verify(context.Background(), audioPath, models.Song{
 		Lyrics: models.Lyrics{LyricsBody: "hello world lyrics"},
