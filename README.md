@@ -61,6 +61,25 @@ MUSIXMATCH_TOKEN=YOUR_TOKEN MXLRC_WEBHOOK_API_KEY=mxlrc_your_webhook_key mxlrcgo
 
 The server listens on `MXLRC_SERVER_ADDR` when `--listen` is not provided. Configure one or more webhook keys with `MXLRC_WEBHOOK_API_KEY`, use `mxlrcgo-svc keys create`, or put the server address and webhook keys in a config file and start with `mxlrcgo-svc serve --config path/to/config.toml`.
 
+### Provider and verification config
+
+Musixmatch is currently the only supported lyrics provider. The config file still exposes provider selection so future providers can be added without changing the fetch and worker paths:
+
+```toml
+[providers]
+primary = "musixmatch"
+disabled = []
+
+[verification]
+enabled = false
+whisper_url = ""
+sample_duration_seconds = 30
+min_confidence = 0.85
+min_similarity = 0.35
+```
+
+When verification is enabled, the worker calls a Whisper-compatible `/v1/audio/transcriptions` sidecar for scanned audio whose Musixmatch metadata confidence is below `min_confidence`. The transcript must overlap the candidate lyrics by at least `min_similarity`.
+
 ### Library and key management
 ```sh
 mxlrcgo-svc library add /music --name Music

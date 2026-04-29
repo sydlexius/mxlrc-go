@@ -8,6 +8,7 @@ import (
 
 	"github.com/sydlexius/mxlrcgo-svc/internal/models"
 	"github.com/sydlexius/mxlrcgo-svc/internal/queue"
+	"github.com/sydlexius/mxlrcgo-svc/internal/verification"
 )
 
 type fakeQueue struct {
@@ -108,6 +109,28 @@ func (w *fakeWriter) WriteLRC(_ models.Song, filename string, outdir string) err
 	return w.err
 }
 
+type fakeVerifier struct {
+	results []verificationResult
+	calls   int
+}
+
+type verificationResult struct {
+	accepted bool
+	err      error
+}
+
+func (v *fakeVerifier) Verify(context.Context, string, models.Song) (verification.Result, error) {
+	res := verificationResult{accepted: true}
+	if v.calls < len(v.results) {
+		res = v.results[v.calls]
+	}
+	v.calls++
+	if res.err != nil {
+		return verification.Result{}, res.err
+	}
+	return verification.Result{Accepted: res.accepted, Similarity: 1}, nil
+}
+
 func TestRunOnceCacheHitAvoidsFetcherAndCompletes(t *testing.T) {
 	track := models.Track{ArtistName: "Artist", TrackName: "Title"}
 	song := models.Song{
@@ -190,6 +213,102 @@ func TestRunOnceFetchesCachesWritesAllOutputsAndCompletes(t *testing.T) {
 	}
 	if len(q.completed) != 1 || q.completed[0] != 2 {
 		t.Fatalf("completed = %v; want [2]", q.completed)
+	}
+}
+
+func TestRunOnceVerifiesLowConfidenceScannedFetch(t *testing.T) {
+	track := models.Track{ArtistName: "Requested Artist", TrackName: "Requested Title"}
+	fetched := models.Track{ArtistName: "Different Artist", TrackName: "Different Title"}
+	q := &fakeQueue{items: []queue.WorkItem{{
+		ID: 20,
+		Inputs: models.Inputs{
+			Track:      track,
+			Outdir:     "out",
+			Filename:   "requested-title.lrc",
+			SourcePath: "/music/requested-title.flac",
+		},
+	}}}
+	fetcher := &fakeFetcher{song: models.Song{
+		Track:  fetched,
+		Lyrics: models.Lyrics{LyricsBody: "fresh lyrics"},
+	}}
+	verifier := &fakeVerifier{}
+	w := New(q, &fakeCache{}, fetcher, &fakeWriter{})
+	w.EnableVerification(verifier, 0.85)
+
+	if err := w.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if verifier.calls != 1 {
+		t.Fatalf("verifier calls = %d; want 1", verifier.calls)
+	}
+	if len(q.completed) != 1 || q.completed[0] != 20 {
+		t.Fatalf("completed = %v; want [20]", q.completed)
+	}
+}
+
+func TestRunOnceSkipsVerificationForHighConfidenceMatch(t *testing.T) {
+	track := models.Track{ArtistName: "Artist", TrackName: "Title"}
+	q := &fakeQueue{items: []queue.WorkItem{{
+		ID: 21,
+		Inputs: models.Inputs{
+			Track:      track,
+			Outdir:     "out",
+			Filename:   "artist-title.lrc",
+			SourcePath: "/music/artist-title.flac",
+		},
+	}}}
+	fetcher := &fakeFetcher{song: models.Song{
+		Track:  track,
+		Lyrics: models.Lyrics{LyricsBody: "fresh lyrics"},
+	}}
+	verifier := &fakeVerifier{}
+	w := New(q, &fakeCache{}, fetcher, &fakeWriter{})
+	w.EnableVerification(verifier, 0.85)
+
+	if err := w.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if verifier.calls != 0 {
+		t.Fatalf("verifier calls = %d; want 0", verifier.calls)
+	}
+}
+
+func TestRunOnceRejectedVerificationMarksQueueFailed(t *testing.T) {
+	track := models.Track{ArtistName: "Requested Artist", TrackName: "Requested Title"}
+	fetched := models.Track{ArtistName: "Different Artist", TrackName: "Different Title"}
+	q := &fakeQueue{items: []queue.WorkItem{{
+		ID: 22,
+		Inputs: models.Inputs{
+			Track:      track,
+			Outdir:     "out",
+			Filename:   "requested-title.lrc",
+			SourcePath: "/music/requested-title.flac",
+		},
+	}}}
+	fetcher := &fakeFetcher{song: models.Song{
+		Track:  fetched,
+		Lyrics: models.Lyrics{LyricsBody: "fresh lyrics"},
+	}}
+	verifier := &fakeVerifier{results: []verificationResult{{accepted: false}}}
+	cache := &fakeCache{}
+	w := New(q, cache, fetcher, &fakeWriter{})
+	w.EnableVerification(verifier, 0.85)
+
+	if err := w.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if verifier.calls != 1 {
+		t.Fatalf("verifier calls = %d; want 1", verifier.calls)
+	}
+	if len(q.failed) != 1 || q.failed[0] != 22 {
+		t.Fatalf("failed = %v; want [22]", q.failed)
+	}
+	if len(cache.stores) != 0 {
+		t.Fatalf("cache stores = %d; want none for rejected verification", len(cache.stores))
+	}
+	if len(q.completed) != 0 {
+		t.Fatalf("completed = %v; want none", q.completed)
 	}
 }
 
