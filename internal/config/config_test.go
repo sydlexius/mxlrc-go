@@ -18,7 +18,8 @@ func isolateEnv(t *testing.T) {
 		"MXLRC_API_COOLDOWN", "MXLRC_COOLDOWN",
 		"MXLRC_OUTPUT_DIR", "MXLRC_SERVER_ADDR", "MXLRC_WEBHOOK_API_KEY",
 		"MXLRC_PROVIDER_PRIMARY", "MXLRC_PROVIDERS_DISABLED",
-		"MXLRC_VERIFICATION_ENABLED", "MXLRC_WHISPER_URL", "MXLRC_VERIFICATION_SAMPLE_DURATION",
+		"MXLRC_VERIFICATION_ENABLED", "MXLRC_VERIFICATION_WHISPER_URL", "MXLRC_WHISPER_URL",
+		"MXLRC_VERIFICATION_SAMPLE_DURATION_SECONDS", "MXLRC_VERIFICATION_SAMPLE_DURATION",
 		"MXLRC_VERIFICATION_MIN_CONFIDENCE", "MXLRC_VERIFICATION_MIN_SIMILARITY",
 		"MXLRC_DOCKER",
 		"XDG_CONFIG_HOME", "XDG_DATA_HOME",
@@ -315,8 +316,10 @@ func TestLoad_ProvidersAndVerificationFromFileAndEnv(t *testing.T) {
 	t.Setenv("MXLRC_PROVIDER_PRIMARY", "override")
 	t.Setenv("MXLRC_PROVIDERS_DISABLED", "musixmatch, other")
 	t.Setenv("MXLRC_VERIFICATION_ENABLED", "false")
-	t.Setenv("MXLRC_WHISPER_URL", "http://env-whisper:9000")
-	t.Setenv("MXLRC_VERIFICATION_SAMPLE_DURATION", "60")
+	t.Setenv("MXLRC_VERIFICATION_WHISPER_URL", "http://env-whisper:9000")
+	t.Setenv("MXLRC_WHISPER_URL", "http://legacy-whisper:9000")
+	t.Setenv("MXLRC_VERIFICATION_SAMPLE_DURATION_SECONDS", "60")
+	t.Setenv("MXLRC_VERIFICATION_SAMPLE_DURATION", "45")
 	t.Setenv("MXLRC_VERIFICATION_MIN_CONFIDENCE", "0.7")
 	t.Setenv("MXLRC_VERIFICATION_MIN_SIMILARITY", "0.5")
 
@@ -344,6 +347,23 @@ func TestLoad_ProvidersAndVerificationFromFileAndEnv(t *testing.T) {
 	}
 	if cfg.Verification.MinSimilarity != 0.5 {
 		t.Fatalf("verification.min_similarity = %v; want 0.5", cfg.Verification.MinSimilarity)
+	}
+}
+
+func TestLoad_VerificationEnvLegacyFallbacks(t *testing.T) {
+	isolateEnv(t)
+	t.Setenv("MXLRC_WHISPER_URL", "http://legacy-whisper:9000")
+	t.Setenv("MXLRC_VERIFICATION_SAMPLE_DURATION", "45")
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Verification.WhisperURL != "http://legacy-whisper:9000" {
+		t.Fatalf("verification.whisper_url = %q; want legacy env value", cfg.Verification.WhisperURL)
+	}
+	if cfg.Verification.SampleDurationSeconds != 45 {
+		t.Fatalf("verification.sample_duration_seconds = %d; want legacy duration", cfg.Verification.SampleDurationSeconds)
 	}
 }
 

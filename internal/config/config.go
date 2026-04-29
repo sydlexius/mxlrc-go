@@ -123,7 +123,7 @@ func Load(path string) (Config, error) {
 // applyEnvOverrides overlays environment variables onto cfg.
 // Token precedence within env vars: MUSIXMATCH_TOKEN > MXLRC_API_TOKEN.
 // Cooldown precedence: MXLRC_API_COOLDOWN > MXLRC_COOLDOWN.
-// Supported: MUSIXMATCH_TOKEN, MXLRC_API_TOKEN, MXLRC_API_COOLDOWN, MXLRC_COOLDOWN, MXLRC_OUTPUT_DIR, MXLRC_DB_PATH, MXLRC_SERVER_ADDR, MXLRC_WEBHOOK_API_KEY, MXLRC_PROVIDER_PRIMARY, MXLRC_PROVIDERS_DISABLED, MXLRC_VERIFICATION_ENABLED, MXLRC_WHISPER_URL, MXLRC_VERIFICATION_SAMPLE_DURATION, MXLRC_VERIFICATION_MIN_CONFIDENCE, MXLRC_VERIFICATION_MIN_SIMILARITY
+// Supported: MUSIXMATCH_TOKEN, MXLRC_API_TOKEN, MXLRC_API_COOLDOWN, MXLRC_COOLDOWN, MXLRC_OUTPUT_DIR, MXLRC_DB_PATH, MXLRC_SERVER_ADDR, MXLRC_WEBHOOK_API_KEY, MXLRC_PROVIDER_PRIMARY, MXLRC_PROVIDERS_DISABLED, MXLRC_VERIFICATION_ENABLED, MXLRC_VERIFICATION_WHISPER_URL, MXLRC_WHISPER_URL, MXLRC_VERIFICATION_SAMPLE_DURATION_SECONDS, MXLRC_VERIFICATION_SAMPLE_DURATION, MXLRC_VERIFICATION_MIN_CONFIDENCE, MXLRC_VERIFICATION_MIN_SIMILARITY
 func applyEnvOverrides(cfg *Config) {
 	// Token: MUSIXMATCH_TOKEN takes precedence over MXLRC_API_TOKEN (backward compat).
 	if v := os.Getenv("MUSIXMATCH_TOKEN"); v != "" {
@@ -174,13 +174,25 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Verification.Enabled = enabled
 		}
 	}
-	if v := os.Getenv("MXLRC_WHISPER_URL"); v != "" {
+	whisperVar := "MXLRC_VERIFICATION_WHISPER_URL"
+	v = os.Getenv(whisperVar)
+	if v == "" {
+		whisperVar = "MXLRC_WHISPER_URL"
+		v = os.Getenv(whisperVar)
+	}
+	if v != "" {
 		cfg.Verification.WhisperURL = v
 	}
-	if v := os.Getenv("MXLRC_VERIFICATION_SAMPLE_DURATION"); v != "" {
+	sampleDurationVar := "MXLRC_VERIFICATION_SAMPLE_DURATION_SECONDS"
+	v = os.Getenv(sampleDurationVar)
+	if v == "" {
+		sampleDurationVar = "MXLRC_VERIFICATION_SAMPLE_DURATION"
+		v = os.Getenv(sampleDurationVar)
+	}
+	if v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n <= 0 {
-			slog.Warn("env var is invalid; using current value", "var", "MXLRC_VERIFICATION_SAMPLE_DURATION", "value", v, "current", cfg.Verification.SampleDurationSeconds) //nolint:gosec // G706: tainted env var passed as a structured slog field value (not a format string); no log-injection vector since slog escapes values
+			slog.Warn("env var is invalid; using current value", "var", sampleDurationVar, "value", v, "current", cfg.Verification.SampleDurationSeconds) //nolint:gosec // G706: tainted env var passed as a structured slog field value (not a format string); no log-injection vector since slog escapes values
 		} else {
 			cfg.Verification.SampleDurationSeconds = n
 		}

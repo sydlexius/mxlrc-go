@@ -111,7 +111,12 @@ func (w *fakeWriter) WriteLRC(_ models.Song, filename string, outdir string) err
 
 type fakeVerifier struct {
 	results []verificationResult
-	calls   int
+	calls   []verifierCall
+}
+
+type verifierCall struct {
+	path string
+	song models.Song
 }
 
 type verificationResult struct {
@@ -119,12 +124,12 @@ type verificationResult struct {
 	err      error
 }
 
-func (v *fakeVerifier) Verify(context.Context, string, models.Song) (verification.Result, error) {
+func (v *fakeVerifier) Verify(_ context.Context, path string, song models.Song) (verification.Result, error) {
 	res := verificationResult{accepted: true}
-	if v.calls < len(v.results) {
-		res = v.results[v.calls]
+	if len(v.calls) < len(v.results) {
+		res = v.results[len(v.calls)]
 	}
-	v.calls++
+	v.calls = append(v.calls, verifierCall{path: path, song: song})
 	if res.err != nil {
 		return verification.Result{}, res.err
 	}
@@ -239,8 +244,14 @@ func TestRunOnceVerifiesLowConfidenceScannedFetch(t *testing.T) {
 	if err := w.RunOnce(context.Background()); err != nil {
 		t.Fatalf("RunOnce: %v", err)
 	}
-	if verifier.calls != 1 {
-		t.Fatalf("verifier calls = %d; want 1", verifier.calls)
+	if len(verifier.calls) != 1 {
+		t.Fatalf("verifier calls = %d; want 1", len(verifier.calls))
+	}
+	if verifier.calls[0].path != "/music/requested-title.flac" {
+		t.Fatalf("verifier path = %q; want source path", verifier.calls[0].path)
+	}
+	if verifier.calls[0].song.Track.ArtistName != fetched.ArtistName || verifier.calls[0].song.Track.TrackName != fetched.TrackName {
+		t.Fatalf("verifier song track = %+v; want fetched track %+v", verifier.calls[0].song.Track, fetched)
 	}
 	if len(q.completed) != 1 || q.completed[0] != 20 {
 		t.Fatalf("completed = %v; want [20]", q.completed)
@@ -269,8 +280,8 @@ func TestRunOnceSkipsVerificationForHighConfidenceMatch(t *testing.T) {
 	if err := w.RunOnce(context.Background()); err != nil {
 		t.Fatalf("RunOnce: %v", err)
 	}
-	if verifier.calls != 0 {
-		t.Fatalf("verifier calls = %d; want 0", verifier.calls)
+	if len(verifier.calls) != 0 {
+		t.Fatalf("verifier calls = %d; want 0", len(verifier.calls))
 	}
 }
 
@@ -298,8 +309,11 @@ func TestRunOnceRejectedVerificationMarksQueueFailed(t *testing.T) {
 	if err := w.RunOnce(context.Background()); err != nil {
 		t.Fatalf("RunOnce: %v", err)
 	}
-	if verifier.calls != 1 {
-		t.Fatalf("verifier calls = %d; want 1", verifier.calls)
+	if len(verifier.calls) != 1 {
+		t.Fatalf("verifier calls = %d; want 1", len(verifier.calls))
+	}
+	if verifier.calls[0].path != "/music/requested-title.flac" {
+		t.Fatalf("verifier path = %q; want source path", verifier.calls[0].path)
 	}
 	if len(q.failed) != 1 || q.failed[0] != 22 {
 		t.Fatalf("failed = %v; want [22]", q.failed)

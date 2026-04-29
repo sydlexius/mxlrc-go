@@ -39,14 +39,18 @@ func TestSelectedProvider(t *testing.T) {
 	}
 }
 
-func TestConfigureWorkerVerificationRequiresURLWhenEnabled(t *testing.T) {
-	w := worker.New(nil, nil, fakeFetcher{}, fakeWriter{})
-	err := configureWorkerVerification(w, config.Config{
+func TestNewVerifierRequiresURLWhenEnabled(t *testing.T) {
+	_, err := newVerifier(config.Config{
 		Verification: config.VerificationConfig{Enabled: true},
 	})
 	if err == nil {
-		t.Fatal("configureWorkerVerification returned nil error; want missing URL error")
+		t.Fatal("newVerifier returned nil error; want missing URL error")
 	}
+}
+
+func TestConfigureWorkerVerificationAcceptsNilVerifier(t *testing.T) {
+	w := worker.New(nil, nil, fakeFetcher{}, fakeWriter{})
+	configureWorkerVerification(w, config.Config{}, nil)
 }
 
 func TestVerificationConfigKeys(t *testing.T) {

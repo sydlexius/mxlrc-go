@@ -329,6 +329,11 @@ func runFetch(ctx context.Context, out io.Writer, args FetchCmd, newFetcher func
 	if args.Outdir != nil {
 		outdir = *args.Outdir
 	}
+	fetcher, err := selectedProvider(cfg, token, newFetcher)
+	if err != nil {
+		slog.Error("failed to configure lyrics provider", "error", err)
+		return 1
+	}
 
 	inputs := queue.NewInputsQueue()
 	sc := scanner.NewScanner()
@@ -345,11 +350,6 @@ func runFetch(ctx context.Context, out io.Writer, args FetchCmd, newFetcher func
 		}
 	}
 
-	fetcher, err := selectedProvider(cfg, token, newFetcher)
-	if err != nil {
-		slog.Error("failed to configure lyrics provider", "error", err)
-		return 1
-	}
 	application := newApp(fetcher, newWriter(), inputs, cooldown, mode)
 	if err := application.Run(ctx); err != nil {
 		slog.Error("application error", "error", err)
@@ -376,6 +376,16 @@ func runServe(ctx context.Context, args ServeCmd, newFetcher func(string) musixm
 	if args.Outdir != nil {
 		outdir = *args.Outdir
 	}
+	fetcher, err := selectedProvider(cfg, token, newFetcher)
+	if err != nil {
+		slog.Error("failed to configure lyrics provider", "error", err)
+		return 1
+	}
+	verifier, err := newVerifier(cfg)
+	if err != nil {
+		slog.Error("failed to configure verification", "error", err)
+		return 1
+	}
 	sqlDB, err := db.Open(ctx, cfg.DB.Path)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
@@ -389,18 +399,8 @@ func runServe(ctx context.Context, args ServeCmd, newFetcher func(string) musixm
 		return 1
 	}
 	workQ := queue.NewDBQueue(sqlDB)
-	fetcher, err := selectedProvider(cfg, token, newFetcher)
-	if err != nil {
-		_ = sqlDB.Close()
-		slog.Error("failed to configure lyrics provider", "error", err)
-		return 1
-	}
 	w := worker.New(workQ, cache.New(sqlDB), fetcher, newWriter())
-	if err := configureWorkerVerification(w, cfg); err != nil {
-		_ = sqlDB.Close()
-		slog.Error("failed to configure verification", "error", err)
-		return 1
-	}
+	configureWorkerVerification(w, cfg, verifier)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	var wg sync.WaitGroup
@@ -474,20 +474,22 @@ func selectedProvider(cfg config.Config, token string, newFetcher func(string) m
 	)
 }
 
-func configureWorkerVerification(w *worker.Worker, cfg config.Config) error {
+func newVerifier(cfg config.Config) (verification.Verifier, error) {
 	if !cfg.Verification.Enabled {
-		return nil
+		return nil, nil
 	}
-	v, err := verification.NewHTTPVerifier(
+	return verification.NewHTTPVerifier(
 		cfg.Verification.WhisperURL,
 		cfg.Verification.SampleDurationSeconds,
 		cfg.Verification.MinSimilarity,
 	)
-	if err != nil {
-		return err
+}
+
+func configureWorkerVerification(w *worker.Worker, cfg config.Config, verifier verification.Verifier) {
+	if verifier == nil {
+		return
 	}
-	w.EnableVerification(v, cfg.Verification.MinConfidence)
-	return nil
+	w.EnableVerification(verifier, cfg.Verification.MinConfidence)
 }
 
 func runScheduler(ctx context.Context, sqlDB *sql.DB, args ServeCmd) {

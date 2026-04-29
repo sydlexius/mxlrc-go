@@ -38,7 +38,6 @@ func TestHTTPVerifierVerifyPostsAudioAndComparesTranscript(t *testing.T) {
 		t.Fatalf("write audio: %v", err)
 	}
 
-	var gotDuration string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/audio/transcriptions" {
 			t.Fatalf("path = %q; want transcription endpoint", r.URL.Path)
@@ -46,7 +45,9 @@ func TestHTTPVerifierVerifyPostsAudioAndComparesTranscript(t *testing.T) {
 		if err := r.ParseMultipartForm(1 << 20); err != nil {
 			t.Fatalf("ParseMultipartForm: %v", err)
 		}
-		gotDuration = r.FormValue("sample_duration_seconds")
+		if got := r.FormValue("sample_duration_seconds"); got != "" {
+			t.Fatalf("sample_duration_seconds = %q; want no nonstandard field", got)
+		}
 		f, _, err := r.FormFile("file")
 		if err != nil {
 			t.Fatalf("FormFile: %v", err)
@@ -68,8 +69,5 @@ func TestHTTPVerifierVerifyPostsAudioAndComparesTranscript(t *testing.T) {
 	}
 	if !res.Accepted {
 		t.Fatalf("accepted = false; want true")
-	}
-	if gotDuration != "45" {
-		t.Fatalf("sample_duration_seconds = %q; want 45", gotDuration)
 	}
 }
