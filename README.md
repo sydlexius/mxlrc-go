@@ -99,6 +99,26 @@ mxlrcgo-svc keys list
 mxlrcgo-svc config get db.path
 ```
 
+### Filesystem watcher (optional, low-latency scans)
+
+By default, `serve` only scans on the scheduler's tick (`--scan-interval`, default 900s), so a new track dropped into the library waits up to that interval before lyrics are fetched. An optional filesystem watcher reacts within seconds for the common single-host case. It is disabled by default and configured entirely through environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MXLRCGO_WATCH_ENABLED` | `false` | Master switch. When unset/false, behavior is exactly as before. |
+| `MXLRCGO_WATCH_DEBOUNCE_MS` | `2000` | Quiet period after the last event before a directory is scanned. Coalesces the event storms that taggers (Beets, Picard) produce when rewriting an album. |
+| `MXLRCGO_WATCH_MAX_DIRS` | `100000` | Safety cap. Startup fails loudly if the configured roots contain more directories than this, rather than silently exceeding the kernel watch budget. |
+
+When a file appears or changes, the watcher scans only the affected directory under the owning library and enqueues any cache misses at scan priority.
+
+The watcher is **best-effort and in addition to** the periodic scan, never a replacement:
+
+- Bind-mounted volumes, NFS, SMB, and Docker Desktop on macOS frequently drop or never emit filesystem events.
+- Events that fire while the container is down are lost; there is no replay. The periodic scan reconciles them.
+- On Linux, very large libraries may require raising the inotify watch limit, e.g. `sysctl fs.inotify.max_user_watches=524288`.
+
+Because the periodic scheduler remains the source of truth, you can safely raise `--scan-interval` to a long backstop (e.g. 6h) when the watcher is enabled.
+
 ### Inspection commands
 
 The `queue` and `scan` subcommands expose the durable work queue and persisted

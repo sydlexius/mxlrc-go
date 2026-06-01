@@ -34,6 +34,7 @@ import (
 	"github.com/sydlexius/mxlrcgo-svc/internal/scanner"
 	"github.com/sydlexius/mxlrcgo-svc/internal/server"
 	"github.com/sydlexius/mxlrcgo-svc/internal/verification"
+	"github.com/sydlexius/mxlrcgo-svc/internal/watcher"
 	"github.com/sydlexius/mxlrcgo-svc/internal/worker"
 )
 
@@ -482,6 +483,13 @@ func runServe(ctx context.Context, args ServeCmd, newFetcher func(string) musixm
 		defer wg.Done()
 		runScheduler(runCtx, sqlDB, args)
 	}()
+	if watchCfg := watcher.ConfigFromEnv(); watchCfg.Enabled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			runWatcher(runCtx, sqlDB, args, watchCfg)
+		}()
+	}
 
 	addr := cfg.Server.Addr
 	if args.Listen != nil {
@@ -589,6 +597,24 @@ func runScheduler(ctx context.Context, sqlDB *sql.DB, args ServeCmd) {
 	s.Interval = interval
 	if err := s.Run(ctx); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		slog.Warn("scheduler failed", "error", err)
+	}
+}
+
+// runWatcher runs the optional filesystem watcher, triggering a targeted scan of
+// the changed directory under the owning library. The periodic scheduler remains
+// the reconciliation backstop; the watcher only lowers latency for new files.
+func runWatcher(ctx context.Context, sqlDB *sql.DB, args ServeCmd, cfg watcher.Config) {
+	sched := scheduler(sqlDB, scanner.ScanOptions{
+		Update:   args.Update,
+		Upgrade:  args.Upgrade,
+		MaxDepth: args.Depth,
+		BFS:      args.BFS,
+	})
+	wch := watcher.New(cfg, library.New(sqlDB), func(ctx context.Context, lib models.Library, path string) error {
+		return sched.RunOnceForPath(ctx, lib, path)
+	})
+	if err := wch.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		slog.Warn("watcher stopped", "error", err)
 	}
 }
 
