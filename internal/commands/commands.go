@@ -490,6 +490,7 @@ func runServe(ctx context.Context, args ServeCmd, newFetcher func(string) musixm
 		Handler: server.NewHandler(authSvc, workQ, outdir,
 			server.WithReadiness(sqlDB),
 			server.WithStatusReporter(workQ),
+			server.WithInventory(scan.New(sqlDB)),
 		),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,

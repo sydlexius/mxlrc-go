@@ -227,6 +227,135 @@ func TestLidarrWebhookAuthAndEnqueueErrors(t *testing.T) {
 	})
 }
 
+type fakeInventory struct {
+	results []models.ScanResult
+	err     error
+}
+
+func (f *fakeInventory) FindByTrack(_ context.Context, _, _ string) ([]models.ScanResult, error) {
+	return f.results, f.err
+}
+
+const downloadBody = `{"eventType":"Download","artist":{"artistName":"Artist"},"album":{"title":"Album"},"tracks":[{"title":"Song"}]}`
+
+func postWebhook(t *testing.T, h *Handler, body string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/webhooks/lidarr?apikey=key", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("webhook status = %d; want 200 (body %q)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestLidarrWebhookResolvesThroughInventory(t *testing.T) {
+	q := &fakeQueue{}
+	inv := &fakeInventory{results: []models.ScanResult{{
+		ID:       7,
+		FilePath: "/music/Artist/Album/song.flac",
+		Track:    models.Track{ArtistName: "Artist", TrackName: "Song"},
+		Outdir:   "/music/Artist/Album",
+		Filename: "song.lrc",
+		Status:   "pending",
+	}}}
+	h := NewHandler(&fakeAuth{}, q, "lyrics", WithInventory(inv))
+	postWebhook(t, h, downloadBody)
+
+	if len(q.items) != 1 {
+		t.Fatalf("enqueued %d items; want 1", len(q.items))
+	}
+	got := q.items[0]
+	if got.SourcePath != "/music/Artist/Album/song.flac" {
+		t.Errorf("SourcePath = %q; want the inventory file path", got.SourcePath)
+	}
+	if got.Outdir != "/music/Artist/Album" || got.Filename != "song.lrc" {
+		t.Errorf("output = %q/%q; want inventory outdir/filename", got.Outdir, got.Filename)
+	}
+	if got.ScanResultID != 7 {
+		t.Errorf("ScanResultID = %d; want 7 (linked to scan result)", got.ScanResultID)
+	}
+	if len(got.OutputPaths) != 1 || got.OutputPaths[0].Outdir != "/music/Artist/Album" {
+		t.Errorf("OutputPaths = %+v; want single inventory destination", got.OutputPaths)
+	}
+}
+
+func TestLidarrWebhookUsesDirectPayloadPath(t *testing.T) {
+	q := &fakeQueue{}
+	h := NewHandler(&fakeAuth{}, q, "lyrics",
+		WithInventory(&fakeInventory{}),
+		WithPathChecker(func(p string) error {
+			if p == "/media/music/Artist/song.mp3" {
+				return nil
+			}
+			return errors.New("not found")
+		}),
+	)
+	body := `{"eventType":"Download","artist":{"artistName":"Artist"},"tracks":[{"title":"Song"}],"trackFiles":[{"path":"/media/music/Artist/song.mp3"}]}`
+	postWebhook(t, h, body)
+
+	if len(q.items) != 1 {
+		t.Fatalf("enqueued %d items; want 1", len(q.items))
+	}
+	got := q.items[0]
+	if got.SourcePath != "/media/music/Artist/song.mp3" {
+		t.Errorf("SourcePath = %q; want the payload path", got.SourcePath)
+	}
+	if got.Outdir != "/media/music/Artist" || got.Filename != "song.lrc" {
+		t.Errorf("output = %q/%q; want path-derived destination", got.Outdir, got.Filename)
+	}
+}
+
+func TestLidarrWebhookFallsBackWhenPayloadPathUnusable(t *testing.T) {
+	q := &fakeQueue{}
+	h := NewHandler(&fakeAuth{}, q, "lyrics",
+		WithInventory(&fakeInventory{}),
+		WithPathChecker(func(string) error { return errors.New("not visible in container") }),
+	)
+	body := `{"eventType":"Download","artist":{"artistName":"Artist"},"tracks":[{"title":"Song"}],"trackFiles":[{"path":"/host/only/song.mp3"}]}`
+	postWebhook(t, h, body)
+
+	if len(q.items) != 1 {
+		t.Fatalf("enqueued %d items; want 1", len(q.items))
+	}
+	got := q.items[0]
+	if got.SourcePath != "" {
+		t.Errorf("SourcePath = %q; want empty (unusable path must not be used)", got.SourcePath)
+	}
+	if got.Outdir != "lyrics" {
+		t.Errorf("Outdir = %q; want metadata fallback to configured outdir", got.Outdir)
+	}
+}
+
+func TestLidarrWebhookFallsBackToMetadata(t *testing.T) {
+	q := &fakeQueue{}
+	h := NewHandler(&fakeAuth{}, q, "lyrics", WithInventory(&fakeInventory{}))
+	postWebhook(t, h, downloadBody)
+
+	if len(q.items) != 1 {
+		t.Fatalf("enqueued %d items; want 1", len(q.items))
+	}
+	got := q.items[0]
+	if got.SourcePath != "" || got.Outdir != "lyrics" {
+		t.Errorf("got %q/%q; want empty source and configured outdir fallback", got.SourcePath, got.Outdir)
+	}
+	if got.Track.AlbumName != "Album" {
+		t.Errorf("AlbumName = %q; want Album carried through metadata fallback", got.Track.AlbumName)
+	}
+}
+
+func TestLidarrWebhookInventoryErrorDoesNotHardFail(t *testing.T) {
+	q := &fakeQueue{}
+	h := NewHandler(&fakeAuth{}, q, "lyrics", WithInventory(&fakeInventory{err: errors.New("inventory db down")}))
+	postWebhook(t, h, downloadBody)
+
+	if len(q.items) != 1 {
+		t.Fatalf("enqueued %d items; want 1 (inventory error must fall back, not fail)", len(q.items))
+	}
+	if q.items[0].Outdir != "lyrics" {
+		t.Errorf("Outdir = %q; want metadata fallback after inventory error", q.items[0].Outdir)
+	}
+}
+
 type fakeReadiness struct{ err error }
 
 func (f *fakeReadiness) PingContext(_ context.Context) error { return f.err }

@@ -69,6 +69,16 @@ The server listens on `MXLRC_SERVER_ADDR` when `--listen` is not provided. Confi
 
 Webhook events are enqueued at high priority. If a webhook arrives for an artist/title that previously failed and is waiting out a retry backoff, the high-priority enqueue resets its retry timer so it becomes eligible immediately, jumping the queue. Scan-enqueued duplicates keep their existing backoff, so bulk scan traffic stays rate-limit protected. The worker's circuit breaker still pauses dequeuing globally when the upstream API signals rate limiting.
 
+#### Path resolution (Docker/Unraid)
+
+Configured library scans are the source of truth for filesystem paths. When a Lidarr webhook arrives, `mxlrcgo-svc` resolves the target file in this order:
+
+1. **Scanned inventory.** The webhook artist/title is matched against persisted scan results (using the same normalization as the cache), and a match reuses the exact container-visible source path and output destination the scan recorded. This is why you should add and scan your libraries (`mxlrcgo-svc library add ...`, then `mxlrcgo-svc scan`) before relying on webhooks.
+2. **Direct payload path.** If there is no inventory match but the webhook payload carries a `trackFiles` path that exists inside the `mxlrcgo-svc` container, that path is used directly.
+3. **Metadata fallback.** Otherwise the lyrics are written to the configured `output.dir` using the webhook metadata.
+
+On Unraid, Lidarr and `mxlrcgo-svc` often see the same media through different mount paths. Because resolution prefers the scanned inventory, you do not need to maintain host-to-container path mappings: a payload path that is not visible inside the container simply falls back to metadata rather than failing.
+
 The scheduler scan interval and worker poll interval are configurable for Docker/Unraid deployments. Set `scan_interval_seconds` and `work_interval_seconds` under `[server]` in the config file, or override with `MXLRC_SCAN_INTERVAL` and `MXLRC_WORK_INTERVAL`. Precedence is CLI flag (`--scan-interval`, `--work-interval`) > environment variable > config file > default. Defaults preserve current behavior: scan interval 900 seconds, and worker interval falls back to `api.cooldown` (clamped to a 15-second floor). A scan interval of 0 scans once without repeating.
 
 ### Health and status endpoints
